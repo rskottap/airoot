@@ -7,6 +7,7 @@ authors = [
 description = "Suite of generation models for text, image, audio and video."
 dependencies = [
     "pytest",
+    "python-magic",
     "Pillow",
     "transformers",
     "assure",
@@ -18,4 +19,4 @@ source = "https://github.com/rskottap/airoot"
 download = "https://pypi.org/project/airoot/#files"
 
 [project.scripts]
-input       = "airrot.__main__:main"
+textgen       = "textgen.__main__:main"

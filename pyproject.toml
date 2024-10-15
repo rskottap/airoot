@@ -10,6 +10,8 @@ dependencies = [
     "python-magic",
     "Pillow",
     "transformers",
+    "accelerate",
+    "optimum",
     "assure",
     "mmry",
 ]

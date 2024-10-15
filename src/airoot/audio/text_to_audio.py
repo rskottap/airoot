@@ -1,5 +1,27 @@
-### Models
-### Bark: https://huggingface.co/docs/transformers/main/en/model_doc/bark, https://github.com/suno-ai/bark
+"""
+GPU highly recommended for good quality and inference times.
+
+Bark:
+Very very slow on cpu.
+- HF:     https://huggingface.co/docs/transformers/main/en/model_doc/bark
+- GitHub: https://github.com/suno-ai/bark
+- Speaker Library for voice presets:
+          https://suno-ai.notion.site/8b8e8749ed514b0cbf3f699013548683?v=bc67cff786b04b50b3ceb756fd05f68c
+
+### AudioCraft Models
+All audiocraft models NEED a gpu to run.
+
+MusicGen:
+- HF:     https://huggingface.co/docs/transformers/main/en/model_doc/musicgen_melody#text-only-conditional-generation
+- GitHub: https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md
+
+AudioGen:
+- Github: https://github.com/facebookresearch/audiocraft/blob/main/docs/AUDIOGEN.md
+
+Magnet:
+- GitHub: https://github.com/facebookresearch/audiocraft/blob/main/docs/MAGNET.md
+
+"""
 
 __all__ = [
     'TextToAudio',
@@ -9,9 +31,17 @@ __all__ = [
 ]
 
 import json
+import logging
 import torch
 from transformers import AutoProcessor, BarkModel, MusicgenForConditionalGeneration
 from airoot.base_model import BaseModel
+
+
+logger = logging.getLogger("text_to_audio")
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 class MusicGen(BaseModel):
@@ -61,8 +91,8 @@ class Bark(BaseModel):
         return audio_array
 
 
-# Defaults for speech and music generation in the order they should be tried 
-# (if loading fails due to memory costraints)
+# Defaults for speech and music generation in the order they should be tried, 
+# i.e., decreasing memory usage if loading bigger fails (due to memory costraints)
 
 # Recommended 16GB GPU memory for bark and musicgen-melody 
 # bark-small and musicgen-small can be run on smaller GPU memories
@@ -90,17 +120,38 @@ def get_default_models():
 
 # Default
 class TextToAudio(BaseModel):
-    def __new__(cls, device, type, *args, **kwds):
-        defaults = config[device][type]
+    def __new__(cls, type, *args, **kwds):
+        """
+        If gpu is available then:
+            - uses gpu regardless of model.
+            - first try to load the cuda models in order (decreasing memory usage).
+            - If all the cuda models fail, then switch to cpu default models but fit them to gpu.
+        
+        If no gpu is available then try to load the cpu models in order.
+        """
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+        if device == 'cuda':
+            defaults = config[device][type]
+            for model in defaults:
+                try:
+                    self = model['model'](name=model['name'], *args, **kwds)
+                    return self
+                except Exception as e:
+                    ### TODO: del model and memory
+                    logger.error(f"Unable to load model {model['name']} on {device.capitalize()}. Trying next model.")
+                    continue
+
+        # either device is cpu or cuda models failed to load
+        defaults = config['cpu'][type]
         for model in defaults:
-            try:
-                self = model['model'](name=model['name'], *args, **kwds)
-                return self
-            except Exception as e:
-                ### TODO: del model and memory
-                ### TODO: Add gpu vs cpu detection logic here
-                continue
+                try:
+                    self = model['model'](name=model['name'], *args, **kwds)
+                    return self
+                except Exception as e:
+                    ### TODO: del model and memory
+                    logger.error(f"Unable to load model {model['name']} on {device.capitalize()}. Trying next model.")
+                    continue
         
         raise Exception(f"Unable to load any of the default models for \
-                        {type} with {device}:\n \{json.dumps(defaults, indent=4)}")
+                            {type}:\n \{json.dumps(defaults, indent=4)}")

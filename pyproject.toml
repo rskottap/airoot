@@ -28,9 +28,6 @@ dev = [
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.black]
-line-length = 80
-
 [project.urls]
 source = "https://github.com/rskottap/airoot"
 download = "https://pypi.org/project/airoot/#files"

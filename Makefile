@@ -1,34 +1,36 @@
 PKG = airoot
+PYTHON = python3
+PIP = pip3
 
 build: build-deps
-	python -m build
+	$(PYTHON) -m build
 
 install: build
-	pip install dist/*.whl
+	$(PIP) install dist/*.whl
 
 develop:
-	pip install -e .
+	$(PIP) install -e .[dev]
 
 check:
 	pytest -v tests
 
 uninstall:
-	pip uninstall $(PKG)
+	$(PIP) uninstall $(PKG)
 
 clean:
 	rm -rvf dist/ build/ src/*.egg-info
 
 push-test:
-	python -m twine upload --repository testpypi dist/*.whl
+	$(PYTHON) -m twine upload --repository testpypi dist/*.whl
 
 pull-test:
-	pip install -i https://test.pypi.org/simple/ $(PKG)
+	$(PIP) install -i https://test.pypi.org/simple/ $(PKG)
 
 push-prod:
-	python -m twine upload dist/*.whl
+	$(PYTHON) -m twine upload dist/*.whl
 
 pull-prod:
-	pip install $(PKG)
+	$(PIP) install $(PKG)
 
 build-deps:
-	@python -c 'import build' &>/dev/null || pip install build
+	@$(PYTHON) -c 'import build' &>/dev/null || $(PIP) install build

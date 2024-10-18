@@ -19,10 +19,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "black>=23.9.1",
-    "isort>=5.10.1",
+    "black",
+    "isort",
     "pre-commit",
 ]
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 80

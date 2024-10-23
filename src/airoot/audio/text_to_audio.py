@@ -1,26 +1,6 @@
 """
 GPU highly recommended for good quality and inference times.
-
-Bark:
-Very very slow on cpu.
-- HF:     https://huggingface.co/docs/transformers/main/en/model_doc/bark
-- GitHub: https://github.com/suno-ai/bark
-- Speaker Library for voice presets:
-          https://suno-ai.notion.site/8b8e8749ed514b0cbf3f699013548683?v=bc67cff786b04b50b3ceb756fd05f68c
-
-### AudioCraft Models
-All audiocraft models NEED a gpu to run.
-
-MusicGen:
-- HF:     https://huggingface.co/docs/transformers/main/en/model_doc/musicgen_melody#text-only-conditional-generation
-- GitHub: https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md
-
-AudioGen:
-- Github: https://github.com/facebookresearch/audiocraft/blob/main/docs/AUDIOGEN.md
-
-Magnet:
-- GitHub: https://github.com/facebookresearch/audiocraft/blob/main/docs/MAGNET.md
-
+See README for model links and other details.
 """
 
 __all__ = [
@@ -28,6 +8,7 @@ __all__ = [
     "Bark",
     "MusicGen",
     "StableAudio1",
+    "ParlerTTS",
     "get_models",
 ]
 
@@ -37,7 +18,13 @@ import subprocess
 
 import torch
 from diffusers import StableAudioPipeline
-from transformers import AutoProcessor, BarkModel, MusicgenForConditionalGeneration
+from parler_tts import ParlerTTSForConditionalGeneration
+from transformers import (
+    AutoProcessor,
+    AutoTokenizer,
+    BarkModel,
+    MusicgenForConditionalGeneration,
+)
 
 from airoot.base_model import BaseModel, get_default_model, set_default_model
 
@@ -50,32 +37,39 @@ logger.addHandler(handler)
 
 
 class MusicGen(BaseModel):
+    # for text to music on gpu
+
     def __init__(self, name):
         super().__init__()
         self.name = name
         self.load_model()
         self.sample_rate = self.model.config.audio_encoder.sampling_rate
+        self.frame_rate = self.model.config.audio_encoder.frame_rate
 
     def load_model(self):
         self.model = MusicgenForConditionalGeneration.from_pretrained(
-            self.name, torch_dtype=torch.float16
+            self.name, torch_dtype=self.torch_dtype
         ).to(self.device)
         self.processor = AutoProcessor.from_pretrained(self.name)
 
-    def generate(self, text, max_new_tokens=256):
+    def generate(self, text, audio_end_in_s=20.0):
         inputs = self.processor(
             text=[text],
             padding=True,
             return_tensors="pt",
         ).to(self.device)
         audio_array = self.model.generate(
-            **inputs, do_sample=True, guidance_scale=3, max_new_tokens=max_new_tokens
+            **inputs,
+            do_sample=True,
+            guidance_scale=3,
+            max_new_tokens=(audio_end_in_s * self.frame_rate),
         )
         audio_array = audio_array[0, 0].numpy()
         return audio_array
 
 
 class Bark(BaseModel):
+    # for text to speech/music on gpu
     # name = "suno/bark" # "suno/bark-small"
 
     def __init__(self, name):
@@ -85,9 +79,9 @@ class Bark(BaseModel):
         self.sample_rate = self.model.generation_config.sample_rate
 
     def load_model(self):
-        self.model = BarkModel.from_pretrained(self.name, torch_dtype=torch.float16).to(
-            self.device
-        )
+        self.model = BarkModel.from_pretrained(
+            self.name, torch_dtype=self.torch_dtype
+        ).to(self.device)
 
         if self.device == "cuda":
             # if using CUDA device, offload the submodels from GPU to CPU when they’re idle
@@ -106,7 +100,7 @@ class Bark(BaseModel):
 
 
 class StableAudio1(BaseModel):
-    # for text to music on cpu TODO: Actually test on cpu
+    # for text to music on cpu
     # name = "stabilityai/stable-audio-open-1.0"
 
     def __init__(self, name):
@@ -117,11 +111,11 @@ class StableAudio1(BaseModel):
 
     def load_model(self):
         self.pipe = StableAudioPipeline.from_pretrained(
-            self.name, torch_dtype=torch.float16
+            self.name, torch_dtype=self.torch_dtype
         ).to(self.device)
         self.generator = torch.Generator(self.device).manual_seed(0)
 
-    def generate(self, text, negative_prompt="Low quality.", audio_end_in_s=10.0):
+    def generate(self, text, audio_end_in_s=5.0, negative_prompt="Low quality."):
         audio = self.pipe(
             text,
             negative_prompt=negative_prompt,
@@ -133,11 +127,47 @@ class StableAudio1(BaseModel):
         return audio_array
 
 
+class ParlerTTS(BaseModel):
+    # for text to speech on cpu
+    # name = "parler-tts/parler-tts-mini-v1"
+
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+        # A default description
+        self.description = "{person}'s voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise and very clear audio."
+        self.load_model()
+        self.sample_rate = self.model.config.sampling_rate
+
+    def load_model(self):
+        self.model = ParlerTTSForConditionalGeneration.from_pretrained(
+            self.name, torch_dtype=self.torch_dtype
+        ).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.name)
+
+    def generate(self, text, voice_preset="Jon", description=None):
+        if description is None:
+            description = self.description.format(person=voice_preset)
+
+        input_ids = self.tokenizer(description, return_tensors="pt").input_ids.to(
+            self.device
+        )
+        prompt_input_ids = self.tokenizer(text, return_tensors="pt").input_ids.to(
+            self.device
+        )
+        generation = self.model.generate(
+            input_ids=input_ids, prompt_input_ids=prompt_input_ids
+        )
+        audio_array = generation.cpu().numpy().squeeze()
+        return audio_array
+
+
 class XTTS(BaseModel):
+    # pip install TTS
     # from TTS.api import TTS
 
-    # !WARNING: NEEDS Python<3.12
-    # for text to speech on cpu TODO: Actually test on cpu
+    # !WARNING: NEEDS Python >3.9 and <3.12, could not install due to pip errors
+    # for text to speech on cpu
     # name = "tts_models/multilingual/multi-dataset/xtts_v2"
 
     def __init__(self, name):
@@ -163,7 +193,7 @@ class XTTS(BaseModel):
 
 config = {
     "cpu": {
-        "speech": [{"model": "", "name": ""}],
+        "speech": [{"model": ParlerTTS, "name": "parler-tts/parler-tts-mini-v1"}],
         "music": [{"model": StableAudio1, "name": "stabilityai/stable-audio-open-1.0"}],
     },
     "cuda": {
@@ -203,41 +233,31 @@ def try_load_models(type, module) -> dict:
         return model
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    # order in which to try out the models
+    params = []
 
+    # first try to load cuda models
     if device == "cuda":
-        defaults = config[device][type]
-        for model in defaults:
-            try:
-                subprocess.run(
-                    [
-                        "python3",
-                        "../test_load_model.py",
-                        json.dumps(model),
-                        "Hello, I am speaking.",
-                    ],
-                    capture_output=True,
-                    check=True,
-                )
-                set_default_model(model, module)
-                return model
-            except Exception as e:
-                logger.error(
-                    f"Unable to load model {model['name']} on {device.capitalize()} due to error {e}\nTrying next model.",
-                    exc_info=True,
-                )
-                continue
-
+        defaults = config["cuda"][type]
+        params.extend(
+            ["--keys", "cuda", type, "--idx", i] for i in range(len(defaults))
+        )
     # either device is cpu or cuda models failed to load
     defaults = config["cpu"][type]
-    for model in defaults:
+    params.extend(["--keys", "cpu", type, "--idx", i] for i in range(len(defaults)))
+
+    for p in params:
         try:
+            model = config[p[1]][p[2]][p[4]]
             subprocess.run(
                 [
                     "python3",
                     "../test_load_model.py",
-                    json.dumps(model),
-                    "Hello, I am speaking.",
-                ],
+                    "-m",
+                    module,
+                    "-t",
+                    "Happy Birthday song.",
+                ].extend(p),
                 capture_output=True,
                 check=True,
             )
@@ -251,7 +271,7 @@ def try_load_models(type, module) -> dict:
             continue
 
     raise Exception(
-        f"Unable to load any of the default models for {type}:\n \{json.dumps(defaults, indent=4)}"
+        f"Unable to load any of the default models in {module} module for {type}. All available models:\n{json.dumps(get_models(), default=lambda o: str(o), indent=4)}"
     )
 
 

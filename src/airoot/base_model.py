@@ -20,6 +20,7 @@ logger.addHandler(handler)
 class BaseModel:
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
     def load_model(self):
         raise NotImplementedError(

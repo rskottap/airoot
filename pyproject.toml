@@ -37,4 +37,5 @@ source = "https://github.com/rskottap/airoot"
 download = "https://pypi.org/project/airoot/#files"
 
 [project.scripts]
-textgen       = "textgen.__main__:main"
+textgen = "textgen.__main__:main"
+audiogen = "audiogen.__main__:main"

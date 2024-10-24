@@ -9,7 +9,6 @@ __all__ = [
     "MusicGen",
     "StableAudio1",
     "ParlerTTS",
-    "get_models",
 ]
 
 import json
@@ -28,7 +27,7 @@ from transformers import (
 
 from airoot.base_model import BaseModel, get_default_model, set_default_model
 
-logger = logging.getLogger("text_to_audio")
+logger = logging.getLogger("TextToAudio")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 formatter = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
@@ -209,10 +208,6 @@ config = {
 }
 
 
-def get_models():
-    return config
-
-
 def try_load_models(type, module) -> dict:
     """
     Tries to load the model into memory, in order of devices.
@@ -277,7 +272,7 @@ def try_load_models(type, module) -> dict:
 
 # Default
 class TextToAudio(BaseModel):
-    def __new__(cls, type, module="audio"):
+    def __new__(cls, type, module="TextToAudio"):
         m = try_load_models(type, module)
         # AudioModel(name)
         self = m["model"](name=m["name"])

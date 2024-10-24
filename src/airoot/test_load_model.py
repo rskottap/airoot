@@ -5,6 +5,9 @@ The internals of model init handle which device to fit to.
 """
 import argparse
 
+import airoot
+from airoot.base_model import get_models
+
 
 def main():
     parser = argparse.ArgumentParser(description="test_load_model")
@@ -13,7 +16,7 @@ def main():
         "--module",
         type=str,
         required=True,
-        help="The module of airoot to test. One of audio, video, image and text.",
+        help="The module of airoot to test. Should be one of the modules in airoot.etc.modules i.e., one of TextTo{x} or {x}ToText for x in Audio, Video, Image, Text.",
     )
     parser.add_argument(
         "-k",
@@ -38,10 +41,8 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.module == "audio":
-        from airoot import audio
-
-        model_config = audio.get_models()
+    if args.module == "TextToAudio":
+        model_config = get_models("TextToAudio")
         model = model_config
         for key in args.keys:
             model = model[key]

@@ -1,4 +1,4 @@
-__all__ = ["BaseModel", "set_default_model", "get_default_model"]
+__all__ = ["BaseModel", "set_default_model", "get_default_model", "get_models"]
 
 import json
 import logging
@@ -50,3 +50,10 @@ def get_default_model(module: str) -> dict | None:
         logger.info(f"Found default model {model} for {module} module in {p}")
         return model
     return None
+
+
+def get_models(module: str) -> dict:
+    if module == "TextToAudio":
+        from airoot.audio.text_to_audio import config
+
+        return config

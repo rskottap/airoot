@@ -223,7 +223,7 @@ def try_load_models(type, module) -> dict:
 
     If no gpu is available then try to load the cpu models in order.
     """
-    model = get_default_model(module)
+    model = get_default_model(module, type)
     if model:
         return model
 
@@ -241,32 +241,39 @@ def try_load_models(type, module) -> dict:
     defaults = config["cpu"][type]
     params.extend(["--keys", "cpu", type, "--idx", i] for i in range(len(defaults)))
 
+    import os
+
+    import airoot
+
     for p in params:
         try:
             model = config[p[1]][p[2]][p[4]]
-            subprocess.run(
-                [
-                    "python3",
-                    "../test_load_model.py",
-                    "-m",
-                    module,
-                    "-t",
-                    "Happy Birthday song.",
-                ].extend(p),
+            p = [str(x) for x in p]
+            test_path = os.path.join(airoot.__path__[0], "test_load_model.py")
+            command = [
+                "python3",
+                test_path,
+                "-m",
+                module,
+                "-t",
+                "Happy Birthday song.",
+            ] + p
+            _ = subprocess.run(
+                command,
                 capture_output=True,
                 check=True,
             )
-            set_default_model(model, module)
+            set_default_model([p[1], p[2], p[4]], module, model, type)
             return model
         except Exception as e:
             logger.error(
-                f"Unable to load model {model['name']} on {device.capitalize()} due to error {e}\nTrying next model.",
+                f"Unable to load model {model['name']} on {device.upper()} due to error:\n{e}\nTrying next model.",
                 exc_info=True,
             )
             continue
 
     raise Exception(
-        f"Unable to load any of the default models in {module} module for {type}. All available models:\n{json.dumps(get_models(), default=lambda o: str(o), indent=4)}"
+        f"Unable to load any of the default models in {module} module for {type}. All available models:\n{json.dumps(config, default=lambda o: str(o), indent=2)}"
     )
 
 

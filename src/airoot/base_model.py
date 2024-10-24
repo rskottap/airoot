@@ -33,20 +33,49 @@ class BaseModel:
         )
 
 
-def set_default_model(model: dict, module: str):
-    p = Path(os.path.join(cache_path, module)).expanduser()
+def set_default_model(model_keys: list[str | int], module: str, model: dict, *args):
+    """
+    model_keys: The list of keys in order to be able to index into that modules *config* dict to get the required model.
+                since the models are of type <class>, just using the keys to index into config avoids import errors and json dumps conversions to/from strings.
+    module:     Name of module. Should be one of etc.modules
+    model:      The model dict, only for better logs
+    args:       Any other args get appended to the path `cache_path/module/....` for arbitrary nesting and types
+                for example: speech and music categories in TextToAudio
+    """
+
+    args = [str(a) for a in args]
+    p = Path(os.path.join(cache_path, module, *args)).expanduser()
     os.makedirs(p, exist_ok=True)
-    with open(os.path.join(p, "model.json")) as f:
-        f.write(json.dumps(model))
+    with open(os.path.join(p, "model.keys"), "w") as f:
+        f.write(",".join(model_keys))
     logger.info(
-        f"Set model {model} as the default model for {module} module in {str(p)}"
+        f"Set model {model} with keys {model_keys} as the default model for {module} module in {str(p)}"
     )
 
 
-def get_default_model(module: str) -> dict | None:
-    p = Path(os.path.join(cache_path, module, "model.json")).expanduser()
+def eval_if_int(value):
+    try:
+        result = eval(value)
+        if isinstance(result, int):
+            return result
+    except:
+        return value
+    return value
+
+
+def get_default_model(module: str, *args) -> dict | None:
+    args = [str(a) for a in args]
+    p = Path(os.path.join(cache_path, module, *args, "model.keys")).expanduser()
     if p.exists():
-        model = json.load(open(p))
+        model_keys = open(p).readline().strip().split(",")
+        model_keys = [eval_if_int(k) for k in model_keys]  # eval any ints for indexing
+
+        # index into config till you get to the model dict {model: <class>, name: "name"}
+        config = get_models(module)
+        model = config
+        for key in model_keys:
+            model = model[key]
+
         logger.info(f"Found default model {model} for {module} module in {p}")
         return model
     return None

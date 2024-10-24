@@ -1,6 +1,6 @@
 """
 GPU highly recommended for good quality and inference times.
-See README for model links and other details.
+See TextToAudio.md for model links and other details.
 """
 
 __all__ = [
@@ -51,7 +51,7 @@ class MusicGen(BaseModel):
         ).to(self.device)
         self.processor = AutoProcessor.from_pretrained(self.name)
 
-    def generate(self, text, audio_end_in_s=20.0):
+    def generate(self, text, audio_end_in_s=5.0):
         inputs = self.processor(
             text=[text],
             padding=True,
@@ -61,9 +61,9 @@ class MusicGen(BaseModel):
             **inputs,
             do_sample=True,
             guidance_scale=3,
-            max_new_tokens=(audio_end_in_s * self.frame_rate),
+            max_new_tokens=int(audio_end_in_s * self.frame_rate),
         )
-        audio_array = audio_array[0, 0].numpy()
+        audio_array = audio_array[0, 0].cpu().numpy()
         return audio_array
 
 
@@ -193,7 +193,7 @@ class XTTS(BaseModel):
 config = {
     "cpu": {
         "speech": [{"model": ParlerTTS, "name": "parler-tts/parler-tts-mini-v1"}],
-        "music": [{"model": StableAudio1, "name": "stabilityai/stable-audio-open-1.0"}],
+        "music": [{"model": MusicGen, "name": "facebook/musicgen-small"}],
     },
     "cuda": {
         "speech": [
@@ -202,7 +202,6 @@ config = {
         ],
         "music": [
             {"model": MusicGen, "name": "facebook/musicgen-melody"},
-            {"model": MusicGen, "name": "facebook/musicgen-small"},
         ],
     },
 }

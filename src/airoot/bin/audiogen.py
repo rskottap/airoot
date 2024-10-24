@@ -44,7 +44,7 @@ def parse_args():
         "-n",
         "--len",
         type=check_positive,
-        help="Length of the music to generate in seconds. Default 5 seconds for cpu and 20 for gpu.",
+        help="Length of the music to generate in seconds. Default 5 seconds.",
     )
 
     return parser.parse_args()

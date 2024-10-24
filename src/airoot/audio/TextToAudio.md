@@ -46,11 +46,12 @@ Do `audiogen --help` for full CLI usage.
 
 ### Via Library
 ```python
-from airoot.audio import get_models, TextToAudio, Bark
+from airoot.base_model import get_models
+from airoot.audio import TextToAudio, Bark
 import soundfile as sf
 
-# Default models to use based on CPU/GPU if they can be loaded successfully.
-default_models = get_models()
+# Default models to use for the TextToAudio module based on CPU/GPU if they can be loaded successfully.
+default_models = get_models("TextToAudio")
 
 # Loads default speech model class based on machine
 model = TextToAudio('speech') # or 'music' for music models
@@ -145,7 +146,7 @@ So using native HuggingFace developed Parler-TTS instead. Less features, but eas
 
 ## Notes
 
-- Do `get_models()` in python to see the config for default models to use for speech and music based on CPU vs GPU availablity. 
+- Do `get_models("TextToAudio")` in python to see the config for default models to use for speech and music based on CPU vs GPU availablity. 
 
 - The **first time** the audiogen command is run (for speech or music), the script `test_load_model.py` is run with the different models available (in order), and sets the **first model that can be successfully loaded into memory** as the **default model** for that machine. Writes the default model config to `~/.cache/airoot/audio/model.json`. 
     - This can take long the first time, so please allow it some time.

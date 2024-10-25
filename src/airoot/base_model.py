@@ -79,7 +79,7 @@ def get_default_model(module: str, *args) -> dict | None:
         for key in model_keys:
             model = model[key]
 
-        logger.info(f"Found default model {model} for {module} module in {p}")
+        logger.info(f"Found default model {model} in {p}")
         return model
     return None
 

@@ -129,7 +129,7 @@ class ParlerTTS(BaseModel):
         super().__init__()
         self.name = name
         # A default description
-        self.description = "{person}'s voice is monotone yet slightly fast in delivery, with a very close recording that almost has no background noise and very clear audio."
+        self.description = "{person}'s voice, with a very close recording that almost has no background noise and very clear audio."
         self.load_model()
         self.sample_rate = self.model.config.sampling_rate
 

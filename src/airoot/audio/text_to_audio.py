@@ -31,9 +31,10 @@ logger = logging.getLogger("airoot.TextToAudio")
 
 
 class MusicGen(BaseModel):
-    # for text to music on gpu
+    # for text to music on cpu/gpu
+    # name="facebook/musicgen-small" # name="facebook/musicgen-melody"
 
-    def __init__(self, name):
+    def __init__(self, name="facebook/musicgen-small"):
         super().__init__()
         self.name = name
         self.load_model()
@@ -42,7 +43,7 @@ class MusicGen(BaseModel):
 
     def load_model(self):
         self.model = MusicgenForConditionalGeneration.from_pretrained(
-            self.name, torch_dtype=self.torch_dtype
+            self.name,
         ).to(self.device)
         self.processor = AutoProcessor.from_pretrained(self.name)
 
@@ -64,9 +65,9 @@ class MusicGen(BaseModel):
 
 class Bark(BaseModel):
     # for text to speech/music on gpu
-    # name = "suno/bark" # "suno/bark-small"
+    # name = "suno/bark" # name = "suno/bark-small"
 
-    def __init__(self, name):
+    def __init__(self, name="suno/bark-small"):
         super().__init__()
         self.name = name
         self.load_model()
@@ -74,7 +75,7 @@ class Bark(BaseModel):
 
     def load_model(self):
         self.model = BarkModel.from_pretrained(
-            self.name, torch_dtype=self.torch_dtype
+            self.name,
         ).to(self.device)
 
         if self.device == "cuda":
@@ -94,10 +95,10 @@ class Bark(BaseModel):
 
 
 class StableAudio1(BaseModel):
-    # for text to music on cpu
+    # for text to music on gpu
     # name = "stabilityai/stable-audio-open-1.0"
 
-    def __init__(self, name):
+    def __init__(self, name="stabilityai/stable-audio-open-1.0"):
         super().__init__()
         self.name = name
         self.load_model()
@@ -109,7 +110,7 @@ class StableAudio1(BaseModel):
         ).to(self.device)
         self.generator = torch.Generator(self.device).manual_seed(0)
 
-    def generate(self, text, audio_end_in_s=5.0, negative_prompt="Low quality."):
+    def generate(self, text, audio_end_in_s=10.0, negative_prompt="Low quality."):
         audio = self.pipe(
             text,
             negative_prompt=negative_prompt,
@@ -125,7 +126,7 @@ class ParlerTTS(BaseModel):
     # for text to speech on cpu
     # name = "parler-tts/parler-tts-mini-v1"
 
-    def __init__(self, name):
+    def __init__(self, name="parler-tts/parler-tts-mini-v1"):
         super().__init__()
         self.name = name
         # A default description
@@ -161,10 +162,12 @@ class XTTS(BaseModel):
     # from TTS.api import TTS
 
     # !WARNING: NEEDS Python >3.9 and <3.12, could not install due to pip errors
-    # for text to speech on cpu
+    # for text to speech
     # name = "tts_models/multilingual/multi-dataset/xtts_v2"
 
-    def __init__(self, name):
+    def __init__(self, name="tts_models/multilingual/multi-dataset/xtts_v2"):
+        from TTS.api import TTS
+
         super().__init__()
         self.name = name
         self.load_model()
@@ -196,7 +199,8 @@ config = {
             {"model": Bark, "name": "suno/bark-small"},
         ],
         "music": [
-            {"model": MusicGen, "name": "facebook/musicgen-melody"},
+            {"model": StableAudio1, "name": "stabilityai/stable-audio-open-1.0"},
+            {"model": MusicGen, "name": "facebook/musicgen-medium"},
         ],
     },
 }
@@ -264,7 +268,7 @@ def try_load_models(type, module) -> dict:
             return model
         except Exception as e:
             logger.error(
-                f"Unable to load model {model['name']} on {device.upper()} due to error:\n{e}\nTrying next model.",
+                f"Unable to load model {model['name']} on {device.upper()} due to error:\n{e.stderr}\nTrying next model.",
                 exc_info=True,
             )
             continue

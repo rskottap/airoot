@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
+import os
 import sys
 
 import soundfile as sf
 
 from airoot.audio import TextToAudio
+
+logger = logging.getLogger("airoot.TextToAudio")
 
 
 def check_positive(value):
@@ -19,7 +23,12 @@ def check_positive(value):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="TextToAudio")
-    parser.add_argument("text", type=str, help="Text prompt for audio generation")
+    parser.add_argument(
+        "text",
+        nargs="?",
+        type=str,
+        help="Text prompt for audio generation. Can be piped in or directly passed.",
+    )
     parser.add_argument(
         "-t",
         "--type",
@@ -58,7 +67,19 @@ def main():
         text = sys.stdin.read().strip()
     else:
         text = args.text.strip()
+    # Raise error if no text input is provided
+    if not text:
+        raise Exception(
+            "Error: No text input provided. Provide text as a positional argument or pipe it into the command."
+        )
+
     output_file = args.output.strip()
+    if not output_file.endswith("wav"):
+        new_output_file = output_file.split(".")[0] + ".wav"
+        logger.warning(
+            f"Output file to write to must be a .wav file but gave '{output_file}'. Writing to '{new_output_file}' instead."
+        )
+        output_file = new_output_file
 
     audio_array = []
     model = None
@@ -75,10 +96,11 @@ def main():
         audio_array = model.generate(text)
 
     sf.write(output_file, audio_array, model.sample_rate)
-    return audio_array
+
+    # If stdout is not connected to a terminal (i.e., there's a pipe), output the audio as raw bytes
+    if not sys.stdout.isatty():
+        sys.stdout.buffer.write(audio_array.tobytes())
 
 
 if __name__ == "__main__":
-    audio_output = main()
-    # Send the audio output to stdout for piping
-    sys.stdout.buffer.write(audio_output.tobytes())
+    main()

@@ -8,42 +8,44 @@
 audiogen <example text> --type <speech/music> --output example.wav
 ```
 ```
-audiogen "Hello, how are you?" --type speech --output hello.wav
+audiogen "Hello, how are you?" --type speech -o hello.wav
 ```
-- Supports piping in text and piping out audio array to/from other commands.
+`echo "Testing testing" | audiogen -o test.wav`
 
-`echo "Hello, how are you?" | audiogen --type speech`
+`type` defaults to speech. Writes to `output.wav` by default.
 
 ❗Only outputs `.wav` file for best quality. Use `ffmpeg` to convert from wav to other audio formats.
 
-#### Speech
+#### Speech 🗣️
 ```
 audiogen "Hello, nice to meet you"
 ```
-`type` defaults to speech. Writes to `output.wav` by default.
 
-❗Example **voice preset for speech models only**. 
-Uses Bark model on GPU, defaults to `v2/en_speaker_6`.
+❗Example **voice preset used for speech models only**. 
+Uses **Bark model on GPU**, defaults to `v2/en_speaker_6`.
 ```
-audiogen "Hello, nice to meet you" --type speech --voice-preset v2/en_speaker_9 --output hello2.wav
+audiogen "Hello, nice to meet you" --type speech -vp v2/en_speaker_9 -o hello2.wav
 ```
-Example voice preset for Parler-TTS on CPU:
+Example voice preset, *available persona* or *any description*, for **Parler-TTS on CPU**:
 ```
 audiogen "Hello, nice to meet you" --type speech --voice-preset Lea --output hello2.wav
 ```
+```
+audiogen "Boop Boop! Excuse me please." -vp "A cute girl kid" -o boop.wav
+```
 
-#### Music
+#### Music 🎶
 ```
 audiogen "90s rock song with loud guitars and heavy drums" --type music --output rock.wav
 ```
 ❗**For music only**, optionally provide `-n/--len` option for length of generated audio in *seconds*. Recommended to generate shorter clips ~5 sec on CPU for reasonable inference times.
 ```
-audiogen "The sound of a hammer hitting a wooden surface." --type music --len 10 --output hammer.wav
+audiogen "Bells and Christmas jingles" --type music --len 10 -o bells.wav
 ```
 
 Do `audiogen --help` for full CLI usage. 
 
-**See *Models Used* section for model links, available voice presets and defaults for CPU vs GPU.**
+🔊 **See *Models Used* section for model links, available voice presets and defaults for CPU vs GPU.**
 
 ---
 
@@ -82,7 +84,7 @@ See `text_to_audio.py` for all available models and implementation details.
 
 ---
 
-### Bark 
+### Bark 🐶
 For text to speech on GPU.
 
 **Speaker Library for Bark voice presets:**
@@ -154,11 +156,11 @@ Do `huggingface-cli login` and create/paste in an access token from your Account
 
 ---
 
-## Notes
+## Notes 📝
 
 - Do `get_models("TextToAudio")` in python to see the config for default models to use for speech and music based on CPU vs GPU availablity. 
 
-- The **first time** the audiogen command is run (for speech or music), the script `test_load_model.py` is run with the different models available (in order), and sets the **first model that can be successfully loaded into memory** as the **default model** for that machine. Writes the default model config to `~/.cache/airoot/audio/model.json`. 
+- The **first time** the audiogen command is run (for speech or music), the script `test_load_model.py` is run with the different models available (in order), and sets the **first model that can be successfully loaded into memory** as the **default model** for that machine. Writes the default model to `~/.cache/airoot/<module>/...`. 
     - This can take long the first time, so please allow it some time.
     - For subsequent runs, by default uses the model in this file (if file exists) and doesn't try to re-check again. So, next runs should be slightly faster.
-    - To force re-checking compatability again, simply remove the file `rm ~/.cache/airoot/audio/model.json`. 
+    - To force re-checking compatability again, simply remove the file `rm ~/.cache/airoot/<module>/.../model.keys`. 

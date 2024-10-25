@@ -145,17 +145,18 @@ See [here](https://github.com/huggingface/parler-tts?tab=readme-ov-file#-using-a
 
 |         | Text To Speech                                      |
 |---------|---------------------------------------------|
-| **XTTS** | [HF Link](https://huggingface.co/coqui/XTTS-v2) &#124; [GitHub Repo](https://github.com/coqui-ai/TTS)        |
+| **XTTS** | [HF Link](https://huggingface.co/coqui/XTTS-v2) &#124; [GitHub Repo](https://github.com/idiap/coqui-ai-TTS)        |
 | **MeloTTS** | [HF Link](https://huggingface.co/myshell-ai/MeloTTS-English) &#124; [GitHub Repo](https://github.com/myshell-ai/MeloTTS)        |
-
-### XTTS and MeloTTS
-XTTS (has voice cloning) and MeloTTS (real-time cpu inference) for text to speech.
 
 BLOG: https://bentoml.com/blog/exploring-the-world-of-open-source-text-to-speech-models
 
-Both supposedly very good but had all sorts of installation errors with fixed python versions and pip package installations.
-Not suported on all OS'es either.
-So using native HuggingFace developed Parler-TTS instead. Less features, but easy integration with HF and the general structure used here.
+MeloTTS (real-time cpu inference) for text to speech.
+
+⭐ **XTTS has voice cloning and voice conversion!** (❗Needs Python >=3.9,<3.12).
+
+`pip install coqui-tts` (DO NOT pip install TTS, that is an unmainted repo). Use according to docs in GitHub Link above.
+
+Only tested on Ubuntu for python >=3.9, <3.12.
 
 ---
 

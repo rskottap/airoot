@@ -157,28 +157,53 @@ class ParlerTTS(BaseModel):
         return audio_array
 
 
-class XTTS(BaseModel):
-    # pip install TTS
+xtts = {
+    "voice_conversion": "voice_conversion_models/multilingual/vctk/freevc24",
+    "voice_cloning": "tts_models/multilingual/multi-dataset/xtts_v2",
+}
+
+
+class XTTSv2(BaseModel):
+    # pip install coqui-tts
     # from TTS.api import TTS
 
-    # !WARNING: NEEDS Python >3.9 and <3.12, could not install due to pip errors
+    # !WARNING: Only tested on Python >3.9 and <3.12
     # for text to speech
-    # name = "tts_models/multilingual/multi-dataset/xtts_v2"
 
-    def __init__(self, name="tts_models/multilingual/multi-dataset/xtts_v2"):
+    def __init__(self, type="voice_cloning"):
         from TTS.api import TTS
 
         super().__init__()
-        self.name = name
+        self.type = type
+        self.name = xtts[type]
         self.load_model()
         self.sample_rate = self.model.config.audio_encoder.sampling_rate
 
     def load_model(self):
-        self.tts = TTS(self.name).to(self.device)
+        self.tts = TTS(self.name, progress_bar=True).to(self.device)
 
-    def generate(self, text, speaker_wav, out_language="en"):
-        wav = self.tts.tts(text=text, speaker_wav=speaker_wav, language=out_language)
-        return wav
+    def generate(
+        self,
+        source_wav,
+        target_wav=None,
+        text=None,
+        out_language="en",
+        file_path="output.wav",
+    ):
+        if target_wav is None and text:
+            # voice cloning
+            self.tts.tts_to_file(
+                text=text,
+                speaker_wav=source_wav,
+                language=out_language,
+                file_path=file_path,
+            )
+            return 0
+        if text is None and target_wav:
+            # voice conversion
+            self.tts.voice_conversion_to_file(source_wav, target_wav, file_path)
+            return 0
+        raise Exception(f"One and only one of target_wav or text needs to be provided.")
 
 
 # Defaults for speech and music generation in the order they should be tried,

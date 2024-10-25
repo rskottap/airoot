@@ -27,12 +27,7 @@ from transformers import (
 
 from airoot.base_model import BaseModel, get_default_model, set_default_model
 
-logger = logging.getLogger("TextToAudio")
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-formatter = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger = logging.getLogger("airoot.TextToAudio")
 
 
 class MusicGen(BaseModel):
@@ -225,6 +220,9 @@ def try_load_models(type, module) -> dict:
     model = get_default_model(module, type)
     if model:
         return model
+    logger.info(
+        f"No default model found (in ~/.cache/airoot) for {module}/{type} on this device. Trying to determine default model for this device."
+    )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     # order in which to try out the models
@@ -248,7 +246,7 @@ def try_load_models(type, module) -> dict:
         try:
             model = config[p[1]][p[2]][p[4]]
             p = [str(x) for x in p]
-            test_path = os.path.join(airoot.__path__[0], "test_load_model.py")
+            test_path = os.path.join(airoot.__path__[-1], "test_load_model.py")
             command = [
                 "python3",
                 test_path,

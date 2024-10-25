@@ -7,6 +7,7 @@ authors = [
 description = "Suite of generation models for text, image, audio and video."
 dependencies = [
     "python-magic",
+    "colorlog",
     "diffusers[torch]",
     "parler-tts@git+https://github.com/huggingface/parler-tts.git",
     "huggingface_hub[cli]",

@@ -5,14 +5,17 @@ import logging
 import os
 from pathlib import Path
 
+import colorlog
 import torch
 
-from airoot.etc import cache_path
+from airoot import etc
 
 logger = logging.getLogger("airoot")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
-formatter = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
+formatter = colorlog.ColoredFormatter(
+    "%(log_color)s%(name)s - %(levelname)s - %(message)s", log_colors=etc.log_colors
+)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -44,7 +47,7 @@ def set_default_model(model_keys: list[str | int], module: str, model: dict, *ar
     """
 
     args = [str(a) for a in args]
-    p = Path(os.path.join(cache_path, module, *args)).expanduser()
+    p = Path(os.path.join(etc.cache_path, module, *args)).expanduser()
     os.makedirs(p, exist_ok=True)
     with open(os.path.join(p, "model.keys"), "w") as f:
         f.write(",".join(model_keys))
@@ -65,7 +68,7 @@ def eval_if_int(value):
 
 def get_default_model(module: str, *args) -> dict | None:
     args = [str(a) for a in args]
-    p = Path(os.path.join(cache_path, module, *args, "model.keys")).expanduser()
+    p = Path(os.path.join(etc.cache_path, module, *args, "model.keys")).expanduser()
     if p.exists():
         model_keys = open(p).readline().strip().split(",")
         model_keys = [eval_if_int(k) for k in model_keys]  # eval any ints for indexing

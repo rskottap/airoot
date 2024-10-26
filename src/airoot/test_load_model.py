@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tries to load the model into memory and run a sample generation.
+Tries to load the model into memory (maybe run a sample generation).
 The internals of model init handle which device to fit to.
 """
 import argparse
@@ -32,24 +32,16 @@ def main():
         default=0,
         help="The index of the model in the available list of default models for a given config.",
     )
-    parser.add_argument(
-        "-t",
-        "--text",
-        type=str,
-        required=True,
-        help="Text prompt for sample generation.",
-    )
     args = parser.parse_args()
 
-    if args.module == "TextToAudio":
-        model_config = get_models("TextToAudio")
-        model = model_config
-        for key in args.keys:
-            model = model[key]
-        model = model[args.idx]
+    model_config = get_models(args.module)
+    model = model_config
+    for key in args.keys:
+        model = model[key]
+    model = model[args.idx]
 
-        m = model["model"](name=model["name"])
-        # _ = m.generate(args.text)
+    m = model["model"](name=model["name"])
+    # _ = m.generate(args.text)
 
 
 if __name__ == "__main__":

@@ -232,8 +232,6 @@ def try_load_models(type, module) -> dict:
                 test_path,
                 "-m",
                 module,
-                "-t",
-                "Happy Birthday song.",
             ] + p
             _ = subprocess.run(
                 command,

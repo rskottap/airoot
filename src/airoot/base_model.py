@@ -89,3 +89,7 @@ def get_models(module: str) -> dict:
         from airoot.audio.text_to_audio import config
 
         return config
+    if module == "AudioToText":
+        from airoot.audio.audio_to_text import config
+
+        return config

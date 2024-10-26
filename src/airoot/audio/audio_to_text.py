@@ -126,8 +126,8 @@ def try_load_models(module) -> dict:
 
 # Default
 class AudioToText(BaseModel):
-    def __new__(cls, type, module="AudioToText"):
-        m = try_load_models(type, module)
+    def __new__(cls, module="AudioToText"):
+        m = try_load_models(module)
         # AudioModel(name)
         self = m["model"](name=m["name"])
         return self

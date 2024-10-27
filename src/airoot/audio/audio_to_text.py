@@ -7,7 +7,6 @@ import json
 import logging
 import subprocess
 
-import librosa
 import torch
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
@@ -31,19 +30,16 @@ class Whisper(BaseModel):
         self.model.config.forced_decoder_ids = None
         self.model.to(self.device)
 
-    def generate(self, audio_file_path, language=None, task="transcribe"):
+    def generate(self, data, sample_rate, language=None, task="transcribe"):
         if language is not None:
             forced_decoder_ids = self.processor.get_decoder_prompt_ids(
                 language=language, task=task
             )
         else:
             forced_decoder_ids = None
-        # Load the input audio and Re-sample the audio to 16kHz for Whisper inference
-        target_sr = 16000
-        data, sr = librosa.load(audio_file_path, sr=target_sr)
 
         input_features = self.processor(
-            data, sampling_rate=sr, return_tensors="pt"
+            data, sampling_rate=sample_rate, return_tensors="pt"
         ).input_features
         predicted_ids = self.model.generate(
             input_features, forced_decoder_ids=forced_decoder_ids

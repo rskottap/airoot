@@ -7,8 +7,9 @@ import json
 import logging
 import subprocess
 
+import librosa
 import torch
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
 from airoot.base_model import BaseModel, get_default_model, set_default_model
 
@@ -17,42 +18,46 @@ logger = logging.getLogger("airoot.AudioToText")
 
 class Whisper(BaseModel):
     # for speech to text
-    # name="openai/whisper-large-v3"
+    # name="openai/whisper-large-v2" # name="openai/whisper-medium" # name="openai/whisper-small"
 
-    def __init__(self, name="openai/whisper-large-v3"):
+    def __init__(self, name="openai/whisper-small"):
         super().__init__()
         self.name = name
         self.load_model()
 
     def load_model(self):
-        self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            self.name,
-            torch_dtype=self.torch_dtype,
-            low_cpu_mem_usage=True,
-            use_safetensors=True,
-        )
+        self.processor = WhisperProcessor.from_pretrained(self.name)
+        self.model = WhisperForConditionalGeneration.from_pretrained(self.name)
+        self.model.config.forced_decoder_ids = None
         self.model.to(self.device)
 
-        self.processor = AutoProcessor.from_pretrained(self.name)
+    def generate(self, audio_file_path, language=None, task="transcribe"):
+        if language is not None:
+            forced_decoder_ids = self.processor.get_decoder_prompt_ids(
+                language=language, task=task
+            )
+        else:
+            forced_decoder_ids = None
+        # Load the input audio and Re-sample the audio to 16kHz for Whisper inference
+        target_sr = 16000
+        data, sr = librosa.load(audio_file_path, sr=target_sr)
 
-        self.pipe = pipeline(
-            "automatic-speech-recognition",
-            model=self.model,
-            tokenizer=self.processor.tokenizer,
-            feature_extractor=self.processor.feature_extractor,
-            torch_dtype=self.torch_dtype,
-            device=self.device,
+        input_features = self.processor(
+            data, sampling_rate=sr, return_tensors="pt"
+        ).input_features
+        predicted_ids = self.model.generate(
+            input_features, forced_decoder_ids=forced_decoder_ids
         )
-
-    def generate(self, sample):
-        # sample: Audio file or array
-        result = self.pipe(sample)
-        return result["text"]
+        text = self.processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+        return text
 
 
 config = {
-    "cpu": [{"model": Whisper, "name": "openai/whisper-large-v3"}],
-    "cuda": [{"model": Whisper, "name": "openai/whisper-large-v3"}],
+    "cpu": [
+        {"model": Whisper, "name": "openai/whisper-medium"},
+        {"model": Whisper, "name": "openai/whisper-small"},
+    ],
+    "cuda": [{"model": Whisper, "name": "openai/whisper-large-v2"}],
 }
 
 

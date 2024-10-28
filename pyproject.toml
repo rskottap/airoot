@@ -16,9 +16,12 @@ dependencies = [
     "assure",
     "mmry",
     "diffusers[torch]",
-    "parler-tts@git+https://github.com/huggingface/parler-tts.git",
     "huggingface_hub[cli]",
 ]
+
+extras_require={
+    'parler-tts': ['parler-tts @ git+https://github.com/huggingface/parler-tts.git'],
+}
 
 [project.optional-dependencies]
 dev = [

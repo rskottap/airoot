@@ -18,12 +18,21 @@ Popular LLMs usage, pdf_to_text, image_to_text, OCR support, image generation, i
 ### Installation
 
 ```
-pip3 install airoot
+pip install airoot[parler-tts]
 ```
-
+or
+```
+pip install airoot
+pip install git+https://github.com/huggingface/parler-tts.git
+```
+Verify installation via:
+```
+pip show airoot
+pip show parler-tts
+```
 Dev mode:
 
-`pip3 install airoot[dev]` for dev dependencies
+`pip3 install airoot[parler-tts][dev]` for dev dependencies
 
 ```bash
 make develop # in repo root to install in editable mode with dev dependencies

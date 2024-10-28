@@ -21,7 +21,7 @@ clean:
 	rm -rvf dist/ build/ src/*.egg-info
 
 push-test:
-	$(PYTHON) -m twine upload --repository testpypi dist/*.whl
+	$(PYTHON) -m twine upload --verbose --repository testpypi dist/*.whl
 
 pull-test:
 	$(PIP) install -i https://test.pypi.org/simple/ $(PKG)

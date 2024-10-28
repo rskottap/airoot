@@ -28,13 +28,15 @@ audiogen "Salut, Comment vas-tu ?" -vp v2/fr_speaker_0 | audiototext --task tran
 
 <p>English</p>
 <audio controls>
-  <source src="../../../include/english-time.wav" type="audio/wav" alt="English">
+  <source src="../../../include/english-time.wav" type="audio/wav">
+  <source src="../../../include/english-time.mp3" type="audio/mpeg">
   Your browser does not support the audio element.
 </audio>
 
 <p>Korean</p>
 <audio controls>
-  <source src="../../../include/korean-time.wav" type="audio/wav" alt="Korean">
+  <source src="../../../include/korean-time.wav" type="audio/wav">
+  <source src="../../../include/korean-time.mp3" type="audio/mpeg">
   Your browser does not support the audio element.
 </audio>
 
@@ -46,6 +48,7 @@ audiogen "Salut, Comment vas-tu ?" -vp v2/fr_speaker_0 | audiototext --task tran
 
 <audio controls>
   <source src="../../../include/ts-love-story-short.wav" type="audio/wav">
+  <source src="../../../include/ts-love-story-short.mp3" type="audio/mpeg">
   Your browser does not support the audio element.
 </audio>
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import io
 import logging
-import os
 import sys
 
 import librosa
@@ -44,7 +44,7 @@ def main():
     # Load the input audio and Re-sample the audio to 16kHz for Whisper inference
     target_sr = 16000
     if not sys.stdin.isatty():
-        audio = sys.stdin.read()
+        audio = io.BytesIO(sys.stdin.buffer.read())
         audio, sr = librosa.load(audio, sr=target_sr)
     else:
         # Raise error if no audio input is provided

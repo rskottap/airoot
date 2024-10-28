@@ -13,15 +13,17 @@ Auto-detects source language and based on `--task` (transcribe/translate, defaul
 ```
 audiototext <sample_audio.wav> --output sample.txt
 ```
-Optionally write output text to file. If not given, prints to stdout.
+- Optionally write output text to file. If not given, prints to stdout.
 
-Also supports piping in audio data and piping out the text to/from upstream/downstream processes.
+- Also supports piping in audio data and piping out the text to/from upstream/downstream processes.
+
+Can use together with audiogen to generate sample audio in different languages and transcribe/translate it back:
 ```
-audiototext <sample_audio.wav> >> sample.txt
+audiogen "Hi, How are you doing?" | audiototext
 ```
 
 ### Examples
-- English and Korean clips asking the time:
+English and Korean clips asking the time:
 
 ![English](../../../include/english-time.wav)
 
@@ -29,7 +31,7 @@ audiototext <sample_audio.wav> >> sample.txt
 
 <img src="../../../include/audiototext-time.png" alt="Time" width="60%"/>
 
-- Taylor Swift love story clip:
+Taylor Swift love story clip:
 
 ![Love Story](../../../include/ts-love-story-short.wav)
 

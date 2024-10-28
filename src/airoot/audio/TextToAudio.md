@@ -1,4 +1,4 @@
-# TextToAudio Module
+# AudioGen (TextToAudio) Module
 
 ❗GPU highly recommended for good quality and inference times.
 

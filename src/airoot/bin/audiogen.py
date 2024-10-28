@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import io
 import logging
-import os
 import sys
 
 import soundfile as sf
@@ -97,9 +97,18 @@ def main():
 
     sf.write(output_file, audio_array, model.sample_rate)
 
-    # If stdout is not connected to a terminal (i.e., there's a pipe), output the audio as raw bytes
+    # If stdout is not connected to a terminal (i.e., there's a pipe), write audio data as WAV format to stdout
     if not sys.stdout.isatty():
-        sys.stdout.buffer.write(audio_array.tobytes())
+        # Write to an in-memory buffer first
+        buffer = io.BytesIO()
+        sf.write(buffer, audio_array, model.sample_rate, format="WAV")
+
+        # Move to the start of the buffer
+        buffer.seek(0)
+
+        # Write the buffer contents to stdout
+        sys.stdout.buffer.write(buffer.read())
+        sys.stdout.flush()  # Ensure all data is written
 
 
 if __name__ == "__main__":

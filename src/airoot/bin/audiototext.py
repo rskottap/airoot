@@ -6,6 +6,7 @@ import logging
 import sys
 
 import librosa
+import soundfile as sf
 
 from airoot.audio import AudioToText
 
@@ -43,9 +44,11 @@ def main():
     # Detect if input is piped or audio file is directly provided.
     # Load the input audio and Re-sample the audio to 16kHz for Whisper inference
     target_sr = 16000
+
     if not sys.stdin.isatty():
         audio = io.BytesIO(sys.stdin.buffer.read())
-        audio, sr = librosa.load(audio, sr=target_sr)
+        # audio, _ = sf.read(sys.stdin.buffer)
+        audio, _ = librosa.load(audio, sr=target_sr)
     else:
         # Raise error if no audio input is provided
         if not args.audio_file_path:
@@ -57,7 +60,7 @@ def main():
                 f"Recommended to use .wav audio files for input. Gave {args.audio_file_path}"
             )
 
-        audio, sr = librosa.load(args.audio_file_path.strip(), sr=target_sr)
+        audio, _ = librosa.load(args.audio_file_path.strip(), sr=target_sr)
 
     model = AudioToText()
     text = model.generate(audio, task=args.task) + "\n"

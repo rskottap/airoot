@@ -1,4 +1,5 @@
 # Transcription/Translation (AudioToText) Module
+Easily convert speech, dialogue, songs etc., to text!
 
 ## Usage
 ### Via CLI
@@ -17,27 +18,44 @@ audiototext <sample_audio.wav> --output sample.txt
 
 - Also supports piping in audio data and piping out the text to/from upstream/downstream processes.
 
-Can use together with audiogen to generate sample audio in different languages and transcribe/translate it back:
+⭐ Can use together with `audiogen` to generate sample audio and transcribe/translate it back. Use audiogen Bark model on GPU with different voice-presets for generating audio in other languages.
 ```
-audiogen "Hi, How are you doing?" | audiototext
+audiogen "Salut, Comment vas-tu ?" -vp v2/fr_speaker_0 | audiototext --task translate
 ```
 
 ### Examples
-English and Korean clips asking the time:
+⏰ English and Korean clips asking the time:
 
-![English](../../../include/english-time.wav)
+<p>English</p>
+<audio controls>
+  <source src="../../../include/english-time.wav" type="audio/wav" alt="English">
+  Your browser does not support the audio element.
+</audio>
 
-![Korean](../../../include/korean-time.wav)
+<p>Korean</p>
+<audio controls>
+  <source src="../../../include/korean-time.wav" type="audio/wav" alt="Korean">
+  Your browser does not support the audio element.
+</audio>
+
 
 <img src="../../../include/audiototext-time.png" alt="Time" width="60%"/>
 
-Taylor Swift love story clip:
 
-![Love Story](../../../include/ts-love-story-short.wav)
+💛 Taylor Swift love story clip:
 
-<img src="../../../include/audiototext-love-story.png" alt="Love Story Clip" width="60%"/>
+<audio controls>
+  <source src="../../../include/ts-love-story-short.wav" type="audio/wav">
+  Your browser does not support the audio element.
+</audio>
+
+
+<img src="../../../include/audiototext-love-story.png" alt="Love Story Clip" width="80%"/>
+
 
 ### Via Library
+In Python
+
 ```python
 import librosa
 

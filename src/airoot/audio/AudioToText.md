@@ -26,13 +26,13 @@ audiogen "Salut, Comment vas-tu ?" -vp v2/fr_speaker_0 | audiototext --task tran
 ### Examples
 ⏰ English and Korean clips asking the time:
 
-<p>English</p>
+![English](https://raw.githubusercontent.com/rskottap/airoot/master/include/english-time.wav)
 <audio controls>
   <source src="../../../include/english-time.wav" type="audio/wav">
   <source src="../../../include/english-time.mp3" type="audio/mpeg">
 </audio>
 
-<p>Korean</p>
+![Korean](https://raw.githubusercontent.com/rskottap/airoot/master/include/korean-time.wav)
 <audio controls>
   <source src="../../../include/korean-time.wav" type="audio/wav">
   <source src="../../../include/korean-time.mp3" type="audio/mpeg">
@@ -43,6 +43,8 @@ audiogen "Salut, Comment vas-tu ?" -vp v2/fr_speaker_0 | audiototext --task tran
 
 
 💛 Taylor Swift love story clip:
+
+![Clip](https://raw.githubusercontent.com/rskottap/airoot/master/include/ts-love-story-short.wav)
 
 <audio controls>
   <source src="../../../include/ts-love-story-short.wav" type="audio/wav">

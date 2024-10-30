@@ -44,7 +44,14 @@ audiogen "Bells and Christmas jingles" --type music --len 10 -o bells.wav
 ```
 ⭐ **StableAudio1 (GPU model) really good for both music and more sound effect like sounds.** For ex, "Hammer hitting wodden surface", "People clapping" etc.,
 
-❗Need to **log in to HuggingFace** for access to use StableAudio1 (only used on gpu) (**otherwise defaults to musicgen-medium model**). Do `huggingface-cli login` and create/paste in an access token from your Account->Settings->Access Tokens.
+<br>
+
+❗❗Need to **log in to HuggingFace** for access to use StableAudio1 (only used on gpu) (**otherwise defaults to musicgen-medium model**).
+- Go to model page [here](https://huggingface.co/stabilityai/stable-audio-open-1.0), sign in and click "Agree" to share contact info.
+- Create an access token from your Account->Settings->Access Tokens and give permission to the token to access this model.
+- Finally, Do `huggingface-cli login` and paste in the above access token.
+
+<br>
 
 Do `audiogen --help` for full CLI usage. 
 

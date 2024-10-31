@@ -1,5 +1,9 @@
 cache_path = "~/.cache/airoot"
-modules = ["TextToAudio", "AudioToText"]
+modules = [
+    "TextToAudio",
+    "AudioToText",
+    "ImageToText",
+]
 log_colors = {
     "DEBUG": "green",
     "INFO": "bold_cyan",

@@ -4,6 +4,7 @@ __all__ = [
     "InstructBlip",
     "EasyOCR",
     "LlavaNext",
+    "Florence",
 ]
 
 import json
@@ -15,6 +16,8 @@ import easyocr
 import torch
 from PIL import Image
 from transformers import (
+    AutoModelForCausalLM,
+    AutoProcessor,
     BlipForConditionalGeneration,
     BlipProcessor,
     InstructBlipForConditionalGeneration,
@@ -30,6 +33,7 @@ logger = logging.getLogger("airoot.ImageToText")
 
 class Blip(BaseModel):
     # for image to text on cpu
+    # link: https://huggingface.co/Salesforce/blip-image-captioning-large
     # name="Salesforce/blip-image-captioning-large"
 
     def __init__(self, name="Salesforce/blip-image-captioning-large"):
@@ -59,6 +63,7 @@ class Blip(BaseModel):
 
 class InstructBlip(BaseModel):
     # for image to text on big gpu
+    # link: https://huggingface.co/Salesforce/instructblip-vicuna-7b
     # NOTE: 32 GB model !!!
     # name="Salesforce/instructblip-vicuna-7b"
 
@@ -110,6 +115,7 @@ class InstructBlip(BaseModel):
 
 class EasyOCR(BaseModel):
     # for image ocr on cpu/gpu
+    # link: https://github.com/JaidedAI/EasyOCR
     """
     EasyOCR has some limits, so wrap generate in a try except.
     - File extension support: png, jpg, tiff.
@@ -143,6 +149,7 @@ class EasyOCR(BaseModel):
 
 class LlavaNext(BaseModel):
     # for image to text on gpu
+    # link: https://huggingface.co/docs/transformers/main/en/model_doc/llava_next#single-image-inference
     # name="llava-hf/llava-v1.6-mistral-7b-hf"
 
     def __init__(self, name="llava-hf/llava-v1.6-mistral-7b-hf"):
@@ -186,6 +193,116 @@ class LlavaNext(BaseModel):
         inputs = self.processor(image, prompt, return_tensors="pt").to(self.device)
         output = self.model.generate(**inputs, max_new_tokens=max_length)
         generated_text = self.processor.decode(output[0], skip_special_tokens=True)
+        return generated_text
+
+
+class Florence(BaseModel):
+    # for image to text on cpu
+    # link: https://huggingface.co/microsoft/Florence-2-large-ft
+    # name="microsoft/Florence-2-large-ft"
+
+    def __init__(self, name="microsoft/Florence-2-large-ft"):
+        super().__init__()
+        self.name = name
+        # self.default_prompt = "Describe this image in detail."
+        self.tasks = [
+            "<OD>",
+            "<CAPTION>",
+            "<DETAILED_CAPTION>",
+            "<MORE_DETAILED_CAPTION>",
+            "<CAPTION_TO_PHRASE_GROUNDING>",
+            "<DENSE_REGION_CAPTION>",
+            "<REGION_PROPOSAL>",
+            "<OCR>",
+            "<OCR_WITH_REGION>",
+        ]
+        self.load_model()
+
+    def load_model(self):
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.name, torch_dtype=self.torch_dtype, trust_remote_code=True
+        ).to(self.device)
+        self.processor = AutoProcessor.from_pretrained(
+            self.name, trust_remote_code=True
+        )
+
+    def generate(
+        self,
+        image_path,
+        task_prompt="<DETAILED_CAPTION>",
+        text_input=None,
+        max_length=1024,
+    ):
+        if text_input is None:
+            prompt = task_prompt
+        else:
+            prompt = task_prompt + text_input
+        image = Image.open(image_path).convert("RGB")
+
+        inputs = self.processor(text=prompt, images=image, return_tensors="pt").to(
+            self.device, self.torch_dtype
+        )
+
+        generated_ids = self.model.generate(
+            input_ids=inputs["input_ids"],
+            pixel_values=inputs["pixel_values"],
+            max_new_tokens=max_length,
+            do_sample=False,
+            num_beams=3,
+        )
+        generated_text = self.processor.batch_decode(
+            generated_ids, skip_special_tokens=False
+        )[0]
+
+        parsed_answer = self.processor.post_process_generation(
+            generated_text, task=task_prompt, image_size=(image.width, image.height)
+        )
+        return parsed_answer
+
+
+class Pixtral(BaseModel):
+    # for image to text on gpu, EXTRA
+    # link: https://huggingface.co/mistralai/Pixtral-12B-2409
+    # pip install vllm mistral_common
+    # NOTE: 25GB model
+    # name="mistralai/Pixtral-12B-2409"
+
+    def __init__(self, name="mistralai/Pixtral-12B-2409"):
+        from vllm import LLM
+        from vllm.sampling_params import SamplingParams
+
+        super().__init__()
+        self.name = name
+        self.default_prompt = textwrap.dedent(
+            """
+        Describe this image in detail.\nInclude any specific details on 
+        background colors, patterns, themes, settings/context (for example if it's a search page 
+        result, texting platform screenshot, pic of scenery etc.,), what might be going on in 
+        the picture (activities, conversations), what all and how many objects, animals and people 
+        are present, their orientations and activities, etc.,\n
+        Besides a general description, include any details that might help uniquely identify the image."""
+        )
+        self.load_model()
+
+    def load_model(self):
+        self.sampling_params = SamplingParams(max_tokens=1024)
+        self.llm = LLM(model=self.name, tokenizer_mode="mistral")
+
+    def generate(self, image_url, text=None, max_length=256):
+        if text is None:
+            text = self.default_prompt
+        # image = Image.open(image_path).convert("RGB")
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": text},
+                    {"type": "image_url", "image_url": {"url": image_url}},
+                ],
+            },
+        ]
+        outputs = self.llm.chat(messages, sampling_params=self.sampling_params)
+        generated_text = outputs[0].outputs[0].text
         return generated_text
 
 

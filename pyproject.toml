@@ -9,6 +9,7 @@ dependencies = [
     "python-magic",
     "colorlog",
     "torchsde",
+    "easyocr",
     "Pillow",
     "transformers",
     "accelerate",

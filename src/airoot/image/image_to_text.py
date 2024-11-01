@@ -2,6 +2,7 @@ __all__ = [
     "ImageToText",
     "Blip",
     "InstructBlip",
+    "EasyOCR",
 ]
 
 import json
@@ -9,6 +10,7 @@ import logging
 import subprocess
 import textwrap
 
+import easyocr
 import torch
 from PIL import Image
 from transformers import (
@@ -54,7 +56,7 @@ class Blip(BaseModel):
 
 class InstructBlip(BaseModel):
     # for image to text on big gpu
-    # 32 GB model!
+    # NOTE: 32 GB model !!!
     # name="Salesforce/instructblip-vicuna-7b"
 
     def __init__(self, name="Salesforce/instructblip-vicuna-7b"):
@@ -103,12 +105,45 @@ class InstructBlip(BaseModel):
         return generated_text
 
 
+class EasyOCR(BaseModel):
+    # for image ocr on cpu/gpu
+    """
+    EasyOCR has some limits, so wrap generate in a try except.
+    - File extension support: png, jpg, tiff.
+    - File size limit: 2 Mb.
+    - Image dimension limit: 1500 pixel.
+    - Possible Language Code Combination: Languages sharing the same written script (e.g. latin) can be used together.
+      English can be used with any language.
+    """
+
+    def __init__(self, name="EasyOCR"):
+        super().__init__()
+        self.name = name
+        # english and traditional chinese
+        self.languages = ["en", "ch_tra"]
+        self.load_model()
+
+    def load_model(self):
+        self.reader = easyocr.Reader(self.languages)
+
+    def generate(self, image_path):
+        text = ""
+        try:
+            text = " ".join(self.reader.readtext(image_path, detail=0))
+            if text:
+                text = "Text extracted from image:\n" + text
+        except Exception as e:
+            logger.error(f"Could not run EasyOCR due to the following error:\n{e}")
+
+        return text
+
+
 config = {
     "cpu": [
         {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
         {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
     ],
-    "cuda": [{"model": InstructBlip, "name": "Salesforce/instructblip-vicuna-7b"}],
+    "cuda": [{"model": Blip, "name": "Salesforce/blip-image-captioning-large"}],
 }
 
 

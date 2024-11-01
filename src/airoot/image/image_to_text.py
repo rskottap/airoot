@@ -3,6 +3,7 @@ __all__ = [
     "Blip",
     "InstructBlip",
     "EasyOCR",
+    "LlavaNext",
 ]
 
 import json
@@ -18,6 +19,8 @@ from transformers import (
     BlipProcessor,
     InstructBlipForConditionalGeneration,
     InstructBlipProcessor,
+    LlavaNextForConditionalGeneration,
+    LlavaNextProcessor,
 )
 
 from airoot.base_model import BaseModel, get_default_model, set_default_model
@@ -138,12 +141,60 @@ class EasyOCR(BaseModel):
         return text
 
 
+class LlavaNext(BaseModel):
+    # for image to text on gpu
+    # name="llava-hf/llava-v1.6-mistral-7b-hf"
+
+    def __init__(self, name="llava-hf/llava-v1.6-mistral-7b-hf"):
+        super().__init__()
+        self.name = name
+        self.default_prompt = textwrap.dedent(
+            """
+        Describe this image in detail.\nInclude any specific details on 
+        background colors, patterns, themes, settings/context (for example if it's a search page 
+        result, texting platform screenshot, pic of scenery etc.,), what might be going on in 
+        the picture (activities, conversations), what all and how many objects, animals and people 
+        are present, their orientations and activities, etc.,\n
+        Besides a general description, include any details that might help uniquely identify the image."""
+        )
+        self.load_model()
+
+    def load_model(self):
+        self.processor = LlavaNextProcessor.from_pretrained(self.name)
+        self.model = LlavaNextForConditionalGeneration.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+            low_cpu_mem_usage=True,
+        ).to(self.device)
+
+    def generate(self, image_path, text=None, max_length=256):
+        if text is None:
+            text = self.default_prompt
+        conversation = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image"},
+                    {"type": "text", "text": text},
+                ],
+            },
+        ]
+        image = Image.open(image_path).convert("RGB")
+        prompt = self.processor.apply_chat_template(
+            conversation, add_generation_prompt=True
+        )
+        inputs = self.processor(image, prompt, return_tensors="pt").to(self.device)
+        output = self.model.generate(**inputs, max_new_tokens=max_length)
+        generated_text = self.processor.decode(output[0], skip_special_tokens=True)
+        return generated_text
+
+
 config = {
     "cpu": [
         {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
         {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
     ],
-    "cuda": [{"model": Blip, "name": "Salesforce/blip-image-captioning-large"}],
+    "cuda": [{"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"}],
 }
 
 

@@ -21,6 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gpu = ["timm", "flash_attn",]
 dev = [
     "pytest",
     "twine",

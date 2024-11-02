@@ -62,7 +62,7 @@ class Blip(BaseModel):
 
 
 class InstructBlip(BaseModel):
-    # for image to text on big gpu
+    # for image to text on big gpu, EXTRA
     # link: https://huggingface.co/Salesforce/instructblip-vicuna-7b
     # NOTE: 32 GB model !!!
     # name="Salesforce/instructblip-vicuna-7b"
@@ -196,8 +196,22 @@ class LlavaNext(BaseModel):
         return generated_text
 
 
+# workaround for unnecessary flash_attn requirement
+from unittest.mock import patch
+
+from transformers.dynamic_module_utils import get_imports
+
+
+def fixed_get_imports(filename: str) -> list[str]:
+    if not str(filename).endswith("modeling_florence2.py"):
+        return get_imports(filename)
+    imports = get_imports(filename)
+    imports.remove("flash_attn")
+    return imports
+
+
 class Florence(BaseModel):
-    # for image to text on cpu
+    # for image to text on gpu
     # link: https://huggingface.co/microsoft/Florence-2-large-ft
     # name="microsoft/Florence-2-large-ft"
 
@@ -219,9 +233,31 @@ class Florence(BaseModel):
         self.load_model()
 
     def load_model(self):
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.name, torch_dtype=self.torch_dtype, trust_remote_code=True
-        ).to(self.device)
+        if self.device == "cpu":
+            # workaround for unnecessary flash_attn requirement on CPU
+            with patch(
+                "transformers.dynamic_module_utils.get_imports", fixed_get_imports
+            ):
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    self.name, torch_dtype=self.torch_dtype, trust_remote_code=True
+                ).to(self.device)
+        else:
+            # on GPU, needs flash_attn. Install if not already done.
+            import pip
+
+            package = "flash_attn"
+            try:
+                __import__(package)
+            except ImportError:
+                logger.info(
+                    f"Module {package} needed for Florence image model on GPU. Trying to `pip install {package}`."
+                )
+                pip.main(["install", package])
+            # set model
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.name, torch_dtype=self.torch_dtype, trust_remote_code=True
+            ).to(self.device)
+
         self.processor = AutoProcessor.from_pretrained(
             self.name, trust_remote_code=True
         )
@@ -311,7 +347,10 @@ config = {
         {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
         {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
     ],
-    "cuda": [{"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"}],
+    "cuda": [
+        {"model": Florence, "name": "microsoft/Florence-2-large-ft"},
+        {"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"},
+    ],
 }
 
 

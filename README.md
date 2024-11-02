@@ -19,16 +19,19 @@ Popular LLMs usage, pdf_to_text, image_to_text, OCR support, image generation, i
 
 ```
 pip install airoot
+```
+**If NVIDIA CUDA GPU available, then do**
+```
+pip install airoot[gpu]
+```
+Next, install ParlerTTS (text to speech model on cpu):
+```
 pip install git+https://github.com/huggingface/parler-tts.git
 ```
-Verify installation via:
-```
-pip show airoot
-pip show parler-tts
-```
+
 Extra, Dev mode:
 
-`pip3 install airoot[dev]` for dev dependencies
+`pip install airoot[dev]` for dev dependencies
 
 ```bash
 make develop # in repo root to install in editable mode with dev dependencies

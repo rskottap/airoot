@@ -48,10 +48,10 @@ class Blip(BaseModel):
             self.name, torch_dtype=self.torch_dtype
         ).to(self.device)
 
-    def generate(self, image_path, text=None, max_length=512):
-        image = Image.open(image_path).convert("RGB")
+    def generate(self, image_data, text=None, max_length=512):
+        image = image_data
 
-        inputs = self.processor(image, return_tensors="pt").to(
+        inputs = self.processor(image, text=text, return_tensors="pt").to(
             self.device, self.torch_dtype
         )
         out = self.model.generate(**inputs, max_length=max_length)
@@ -86,10 +86,10 @@ class InstructBlip(BaseModel):
             self.name, torch_dtype=self.torch_dtype
         ).to(self.device)
 
-    def generate(self, image_path, text=None, max_length=512):
+    def generate(self, image_data, text=None, max_length=512):
         if text is None:
             text = self.default_prompt
-        image = Image.open(image_path).convert("RGB")
+        image = image_data
 
         inputs = self.processor(images=image, text=text, return_tensors="pt").to(
             self.device, self.torch_dtype
@@ -133,10 +133,10 @@ class EasyOCR(BaseModel):
     def load_model(self):
         self.reader = easyocr.Reader(self.languages)
 
-    def generate(self, image_path):
+    def generate(self, image_data):
         text = ""
         try:
-            text = " ".join(self.reader.readtext(image_path, detail=0))
+            text = " ".join(self.reader.readtext(image_data, detail=0))
             if text:
                 text = "Text extracted from image:\n" + text
         except Exception as e:
@@ -172,7 +172,7 @@ class LlavaNext(BaseModel):
             low_cpu_mem_usage=True,
         ).to(self.device)
 
-    def generate(self, image_path, text=None, max_length=512):
+    def generate(self, image_data, text=None, max_length=512):
         if text is None:
             text = self.default_prompt
         conversation = [
@@ -184,7 +184,7 @@ class LlavaNext(BaseModel):
                 ],
             },
         ]
-        image = Image.open(image_path).convert("RGB")
+        image = image_data
         prompt = self.processor.apply_chat_template(
             conversation, add_generation_prompt=True
         )
@@ -262,7 +262,7 @@ class Florence(BaseModel):
 
     def generate(
         self,
-        image_path,
+        image_data,
         task_prompt="<DETAILED_CAPTION>",
         text_input=None,
         max_length=1024,
@@ -271,7 +271,7 @@ class Florence(BaseModel):
             prompt = task_prompt
         else:
             prompt = task_prompt + text_input
-        image = Image.open(image_path).convert("RGB")
+        image = image_data
 
         inputs = self.processor(text=prompt, images=image, return_tensors="pt").to(
             self.device, self.torch_dtype
@@ -324,7 +324,7 @@ class Pixtral(BaseModel):
     def generate(self, image_url, text=None, max_length=1024):
         if text is None:
             text = self.default_prompt
-        # image = Image.open(image_path).convert("RGB")
+        # image = image_data
         messages = [
             {
                 "role": "user",

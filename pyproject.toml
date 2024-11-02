@@ -41,4 +41,4 @@ download = "https://pypi.org/project/airoot/#files"
 [project.scripts]
 audiogen = "airoot.bin.audiogen:main"
 audiototext = "airoot.bin.audiototext:main"
-
+imagetotext = "airoot.bin.imagetotext:main"

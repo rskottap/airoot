@@ -345,7 +345,6 @@ class Pixtral(BaseModel):
 config = {
     "cpu": [
         {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
-        {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
     ],
     "cuda": [
         {"model": Florence, "name": "microsoft/Florence-2-large-ft"},

@@ -48,15 +48,13 @@ class Blip(BaseModel):
             self.name, torch_dtype=self.torch_dtype
         ).to(self.device)
 
-    def generate(self, image_path, text=None):
-        if text is None:
-            text = self.default_prompt
+    def generate(self, image_path, text=None, max_length=512):
         image = Image.open(image_path).convert("RGB")
 
-        inputs = self.processor(image, text, return_tensors="pt").to(
+        inputs = self.processor(image, return_tensors="pt").to(
             self.device, self.torch_dtype
         )
-        out = self.model.generate(**inputs)
+        out = self.model.generate(**inputs, max_length=max_length)
         generated_text = self.processor.decode(out[0], skip_special_tokens=True)
         return generated_text
 
@@ -88,7 +86,7 @@ class InstructBlip(BaseModel):
             self.name, torch_dtype=self.torch_dtype
         ).to(self.device)
 
-    def generate(self, image_path, text=None, max_length=256):
+    def generate(self, image_path, text=None, max_length=512):
         if text is None:
             text = self.default_prompt
         image = Image.open(image_path).convert("RGB")
@@ -174,7 +172,7 @@ class LlavaNext(BaseModel):
             low_cpu_mem_usage=True,
         ).to(self.device)
 
-    def generate(self, image_path, text=None, max_length=256):
+    def generate(self, image_path, text=None, max_length=512):
         if text is None:
             text = self.default_prompt
         conversation = [
@@ -321,10 +319,9 @@ class Pixtral(BaseModel):
         self.load_model()
 
     def load_model(self):
-        self.sampling_params = SamplingParams(max_tokens=1024)
         self.llm = LLM(model=self.name, tokenizer_mode="mistral")
 
-    def generate(self, image_url, text=None, max_length=256):
+    def generate(self, image_url, text=None, max_length=1024):
         if text is None:
             text = self.default_prompt
         # image = Image.open(image_path).convert("RGB")
@@ -337,6 +334,7 @@ class Pixtral(BaseModel):
                 ],
             },
         ]
+        self.sampling_params = SamplingParams(max_tokens=max_length)
         outputs = self.llm.chat(messages, sampling_params=self.sampling_params)
         generated_text = outputs[0].outputs[0].text
         return generated_text

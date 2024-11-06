@@ -25,7 +25,7 @@ def parse_args():
         "-p",
         "--prompt",
         type=str,
-        help="User prompt (like question) to process image with. If not provided, by default generates a description of the image.",
+        help="User prompt (like question) to process image with. If not provided, by default generates a description of the image. ONLY RECOMMENDED ON GPU.",
     )
     parser.add_argument(
         "-l",
@@ -48,7 +48,7 @@ def main():
 
     # Detect if input is piped or image file is directly provided.
     if not sys.stdin.isatty():
-        image_bytes = assure.bytes(io.BytesIO(sys.stdin.buffer.read()))
+        image_bytes = io.BytesIO(sys.stdin.buffer.read())
         image = Image.open(image_bytes).convert("RGB")
     else:
         # Raise error if no audio input is provided
@@ -77,7 +77,7 @@ def main():
     else:
         # no pipe and output file not provided, then print to stdout
         if not args.output:
-            logger.info("Output text is:")
+            # logger.info("Output text is:")
             print(text)
 
 

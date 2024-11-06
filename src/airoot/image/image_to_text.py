@@ -1,7 +1,7 @@
 __all__ = [
     "ImageToText",
     "Blip",
-    "InstructBlip",
+    "Blip2",
     "EasyOCR",
     "LlavaNext",
     "Florence",
@@ -18,10 +18,10 @@ from PIL import Image
 from transformers import (
     AutoModelForCausalLM,
     AutoProcessor,
+    Blip2ForConditionalGeneration,
+    Blip2Processor,
     BlipForConditionalGeneration,
     BlipProcessor,
-    InstructBlipForConditionalGeneration,
-    InstructBlipProcessor,
     LlavaNextForConditionalGeneration,
     LlavaNextProcessor,
 )
@@ -35,11 +35,14 @@ class Blip(BaseModel):
     # for image to text on cpu
     # link: https://huggingface.co/Salesforce/blip-image-captioning-large
     # name="Salesforce/blip-image-captioning-large"
+    # link: https://huggingface.co/Salesforce/blip-vqa-base
+    # name="Salesforce/blip-vqa-base" # For VQA
 
     def __init__(self, name="Salesforce/blip-image-captioning-large"):
         super().__init__()
         self.name = name
         self.default_prompt = "Describe this image in detail."
+        self.default_prompt = "What is this image about?"
         self.load_model()
 
     def load_model(self):
@@ -49,65 +52,49 @@ class Blip(BaseModel):
         ).to(self.device)
 
     def generate(self, image_data, text=None, max_length=512):
+        # NOTE: blip-image-captioning-large and vqa-base don't do well with prompts
         image = image_data
-
-        inputs = self.processor(image, text=text, return_tensors="pt").to(
-            self.device, self.torch_dtype
-        )
-        out = self.model.generate(**inputs, max_length=max_length)
-        generated_text = self.processor.decode(out[0], skip_special_tokens=True)
+        if self.name == "Salesforce/blip-image-captioning-large":
+            inputs = self.processor(image, return_tensors="pt").to(
+                self.device, self.torch_dtype
+            )
+        else:
+            inputs = self.processor(image, text=text, return_tensors="pt").to(
+                self.device, self.torch_dtype
+            )
+        out = self.model.generate(**inputs, max_new_tokens=max_length)
+        generated_text = self.processor.decode(out[0], skip_special_tokens=True).strip()
         return generated_text
 
 
-class InstructBlip(BaseModel):
-    # for image to text on big gpu, EXTRA
-    # link: https://huggingface.co/Salesforce/instructblip-vicuna-7b
-    # NOTE: 32 GB model !!!
-    # name="Salesforce/instructblip-vicuna-7b"
+class Blip2(BaseModel):
+    # link: https://huggingface.co/Salesforce/blip2-opt-2.7b
+    # name="Salesforce/blip2-opt-2.7b" # For BLIP2
 
-    def __init__(self, name="Salesforce/instructblip-vicuna-7b"):
+    def __init__(self, name="Salesforce/blip2-opt-2.7b"):
         super().__init__()
         self.name = name
-        self.default_prompt = textwrap.dedent(
-            """
-        Describe this image in detail.\nInclude any specific details on 
-        background colors, patterns, themes, settings/context (for example if it's a search page 
-        result, texting platform screenshot, pic of scenery etc.,), what might be going on in 
-        the picture (activities, conversations), what all and how many objects, animals and people 
-        are present, their orientations and activities, etc.,\n
-        Besides a general description, include any details that might help uniquely identify the image."""
-        )
-
+        self.template = "Question: {} Answer:"
+        self.default_prompt = "What is this image about?"
         self.load_model()
 
     def load_model(self):
-        self.processor = InstructBlipProcessor.from_pretrained(self.name)
-        self.model = InstructBlipForConditionalGeneration.from_pretrained(
+        self.processor = Blip2Processor.from_pretrained(self.name)
+        self.model = Blip2ForConditionalGeneration.from_pretrained(
             self.name, torch_dtype=self.torch_dtype
         ).to(self.device)
 
     def generate(self, image_data, text=None, max_length=512):
         if text is None:
-            text = self.default_prompt
-        image = image_data
+            text = self.template.format(self.default_prompt)
+        else:
+            text = self.template.format(text)
 
-        inputs = self.processor(images=image, text=text, return_tensors="pt").to(
+        inputs = self.processor(image_data, text=text, return_tensors="pt").to(
             self.device, self.torch_dtype
         )
-        outputs = self.model.generate(
-            **inputs,
-            do_sample=False,
-            num_beams=5,
-            max_length=max_length,
-            min_length=1,
-            top_p=0.9,
-            repetition_penalty=1.5,
-            length_penalty=1.0,
-            temperature=1,
-        )
-        generated_text = self.processor.batch_decode(outputs, skip_special_tokens=True)[
-            0
-        ].strip()
+        out = self.model.generate(**inputs, max_length=max_length)
+        generated_text = self.processor.decode(out[0], skip_special_tokens=True).strip()
         return generated_text
 
 
@@ -294,59 +281,15 @@ class Florence(BaseModel):
         return parsed_answer
 
 
-class Pixtral(BaseModel):
-    # for image to text on gpu, EXTRA
-    # link: https://huggingface.co/mistralai/Pixtral-12B-2409
-    # pip install vllm mistral_common
-    # NOTE: 25GB model
-    # name="mistralai/Pixtral-12B-2409"
-
-    def __init__(self, name="mistralai/Pixtral-12B-2409"):
-        from vllm import LLM
-        from vllm.sampling_params import SamplingParams
-
-        super().__init__()
-        self.name = name
-        self.default_prompt = textwrap.dedent(
-            """
-        Describe this image in detail.\nInclude any specific details on 
-        background colors, patterns, themes, settings/context (for example if it's a search page 
-        result, texting platform screenshot, pic of scenery etc.,), what might be going on in 
-        the picture (activities, conversations), what all and how many objects, animals and people 
-        are present, their orientations and activities, etc.,\n
-        Besides a general description, include any details that might help uniquely identify the image."""
-        )
-        self.load_model()
-
-    def load_model(self):
-        self.llm = LLM(model=self.name, tokenizer_mode="mistral")
-
-    def generate(self, image_url, text=None, max_length=1024):
-        if text is None:
-            text = self.default_prompt
-        # image = image_data
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": text},
-                    {"type": "image_url", "image_url": {"url": image_url}},
-                ],
-            },
-        ]
-        self.sampling_params = SamplingParams(max_tokens=max_length)
-        outputs = self.llm.chat(messages, sampling_params=self.sampling_params)
-        generated_text = outputs[0].outputs[0].text
-        return generated_text
-
-
 config = {
     "cpu": [
         {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
+        {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
     ],
     "cuda": [
         {"model": Florence, "name": "microsoft/Florence-2-large-ft"},
         {"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"},
+        {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
     ],
 }
 

@@ -250,14 +250,18 @@ class Florence(BaseModel):
     def generate(
         self,
         image_data,
-        task_prompt="<DETAILED_CAPTION>",
-        text_input=None,
+        task_prompt="<MORE_DETAILED_CAPTION>",
+        text=None,
         max_length=1024,
     ):
-        if text_input is None:
-            prompt = task_prompt
+        # With additional text (for all tasks except <CAPTION_TO_PHRASE_GROUNDING>), gives error:
+        # AssertionError: Task token <MORE_DETAILED_CAPTION> should be the only token in the text.
+
+        if text is not None and task_prompt == "<CAPTION_TO_PHRASE_GROUNDING>":
+            prompt = task_prompt + text
         else:
-            prompt = task_prompt + text_input
+            prompt = task_prompt
+
         image = image_data
 
         inputs = self.processor(text=prompt, images=image, return_tensors="pt").to(
@@ -278,7 +282,7 @@ class Florence(BaseModel):
         parsed_answer = self.processor.post_process_generation(
             generated_text, task=task_prompt, image_size=(image.width, image.height)
         )
-        return parsed_answer
+        return parsed_answer[task_prompt]
 
 
 config = {

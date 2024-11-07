@@ -45,7 +45,7 @@ model = ImageToText()
 # model = Blip2() # use directly for testing etc.,
 
 # load image
-img_path = "<path-to-image-file>"
+img_path = "<full-path-to-image-file>"
 image = Image.open(img_path).convert("RGB")
 
 description = model.generate(image) # Describes image

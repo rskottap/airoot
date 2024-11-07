@@ -5,7 +5,6 @@ import io
 import logging
 import sys
 
-import assure
 from PIL import Image
 
 from airoot.image import ImageToText

@@ -78,11 +78,9 @@ deactivate
 source ~/env/rvc/bin/activate
 python3 --version
 
-# Get pip for python3.10, if venv throws an error that it's not there
+# If venv throws an error that pip is not there, get pip for python3.10
 curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 ```
-
-- If a particular python package gives errors during pip install, try removing the hard version dependency (package==x.y.z, numpy, pedalboard, scipy) and re-install.
 
 - `fairseq` doesn't work with python 3.11 but works on 3.10.
 

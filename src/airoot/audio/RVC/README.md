@@ -1,4 +1,4 @@
-AI Song/Cover/Audio Generation using RVC Models
+# AI Song/Cover/Audio Generation using RVC Models
 
 **RVC: Retrieval based Voice Cloning**
 
@@ -11,9 +11,7 @@ You can search for RVC models trained on existing singers, characters, celebriti
 
 The downloaded zip file should contain the .pth model file and an optional .index file.
 
----
-
-## Voice Cloning/Conversion
+## 🎶 Run Voice Cloning/Conversion
 
 See ⭐ [AICoverGen](https://github.com/SociallyIneptWeeb/AICoverGen) and follow instructions there.
 
@@ -21,48 +19,111 @@ For Google Colab GPU usage, see notebook [here](https://colab.research.google.co
 
 For running locally, follow instructions in repo.
 
-In a **separate python virtual environment**, do:
+In a *separate python virtual environment* (**Recommended Python3.10**), do:
+
+Clone the repo:
 ```bash
 git clone https://github.com/SociallyIneptWeeb/AICoverGen
 cd AICoverGen
-pip install -r requirements.txt
+```
 
+Seems like colab notebook has latest requirements.
+Install the requirements (taken from colab notebook):
+```bash
+pip install pip==23.3.1
+pip install -r requirements.txt
+pip install gradio-client==0.8.1
+pip install gradio==3.48.0
+# install cuda fix
+python -m pip install ort-nightly-gpu --index-url=https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ort-cuda-12-nightly/pypi/simple/
+sudo apt update
+sudo apt install sox
+```
+
+Download required models:
+```bash
 python src/download_models.py
 ```
 
-Run the **WebUI**:
+Run the WebUI:
 
 ```bash
 python src/webui.py
 ```
 
-- Upload your downloaded RVC models in the `Upload model` tab.
-- Generate AI Audio in the `Generate` tab with desired voice convertion and audio mixing options.
+1. Upload your downloaded RVC models in the `Upload model` tab.
+
+2. Generate AI Audio in the `Generate` tab with desired voice conversion and audio mixing options.
 
 **Extra:** Full guide (for different tool) here: [AI covers, RVC with crepe](https://youtu.be/bP8AMf20MAY)
 
-### Troubleshooting
+### ❗Troubleshooting
 
 For Debian/Ubuntu-based systems:
 
 ```bash
+# For missing "Python.h" file
 sudo apt update
-sudo apt install python3-dev
+sudo apt install python3.10-dev # or your python version dev package
 sudo apt install build-essential
+
+# Get python3.10
+sudo apt install python3.10
+sudo apt install libssl-dev libffi-dev python3.10-venv python3.10-distutils python3.10-dev
+python3.10 --version
+
+# Make and activate venv
+python3.10 -m venv ~/env/rvc
+deactivate
+source ~/env/rvc/bin/activate
+python3 --version
+
+# Get pip for python3.10, if venv throws an error that it's not there
+curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 ```
 
----
+- If a particular python package gives errors during pip install, try removing the hard version dependency (package==x.y.z, numpy, pedalboard, scipy) and re-install.
 
-### Basic Terminology and Settings
+- `fairseq` doesn't work with python 3.11 but works on 3.10.
 
-TODO
+- `torch==2.0.1` supports Python versions up to 3.11. **Recommended Python3.10**.
 
----
+## 📝 Basic Terminology and Settings
+
+1. **Index Rate (RVC Models)**
+Definition: Determines the model’s reference for matching vocal characteristics to the target.
+Effect on Music: A higher index rate makes the voice sound closer to the source (original) but may reduce diversity in output.
+
+2. **Filter Radius**
+Definition: The range over which noise or unwanted artifacts are smoothed out.
+Effect on Music: A smaller filter radius keeps more details but may retain noise. A larger radius reduces noise but risks losing fine details.
+
+3. **RMS Mix Rate**
+Definition: Adjusts the balance between the root mean square (RMS) power levels of the generated and source audio.
+Effect on Music: Controls the loudness and consistency of audio. A higher mix rate makes the output match the input more in energy.
+
+4. **Protect Rate**
+Definition: The threshold for preventing certain vocal characteristics from being altered during processing.
+Effect on Music: Helps maintain the original voice's character. A high protect rate preserves more of the source vocal traits.
+
+5. **Room Size (Reverb)**
+Definition: Represents the simulated size of the room in which the sound is playing.
+Effect on Music: Larger room sizes create longer reverb tails, giving a more open and grand sound.
+
+6. **Wetness**
+Definition: The level of effect (reverb/echo) applied to the audio.
+Effect on Music: Increasing wetness makes the audio sound more distant and spacious.
+
+7. **Dryness**
+Definition: The level of the original, unprocessed sound in the mix.
+Effect on Music: More dryness makes the sound upfront and clear, with less ambient effect.
+
+8. **Damping Levels**
+Definition: Controls the absorption of high frequencies in the simulated space.
+Effect on Music: Higher damping makes reverb sound warmer by reducing high frequencies. Lower damping allows more brilliance and sharpness in the reflections.
 
 ## Training Your Own RVC Model
 Notes taken from [here](https://docs.google.com/document/d/13ebnzmeEBc6uzYCMt-QVFQk-whVrK4zw8k7_Lw3Bv_A/edit?pli=1&tab=t.0#heading=h.bjzhhhcn3f69)
-
----
 
 ## Dataset Creation
 
@@ -75,6 +136,8 @@ Ideally you have actual official acapellas, but those are extremely hard to come
 - Small UVR video explanation: https://youtu.be/ITNeuOarHHw
 
 [Music Seperation Repo](https://github.com/ZFTurbo/MVSEP-MDX23-music-separation-model)
+- `pip install demucs onnxruntime` for this.
+- For separating all the tracks, sometimes the inference script might look like it's hanging. Check the output folder to see if all the tracks are there and are about the same size and non-zero, if so, you can safely kill the script.
 
 ### Removing reverb / echo
 
@@ -99,8 +162,6 @@ In most cases, these are too hard to isolate for dataset purposes without it sou
 - The recommendation from the RVC devs is **at least 10 minutes for high quality models** that can handle a variety of pitches and tones. High quality dataset of anywhere between 10 and 45 min should be good.
 - Quality of dataset is more important than quantity. Single bigger files under 30 min should be good as is (without breaking up). for longer than 30 min, break into shorter segments. Can use the *regular interval labels feature in Audacity*.
 - RVC chops into ~4s bits, so make sure your samples are at least 4s long for consistency reasons (or merge the shorter samples into one long file).
-
----
 
 ## Training
 TODO

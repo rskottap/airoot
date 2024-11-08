@@ -1,6 +1,18 @@
 import torch
 from TTS.api import TTS
 
+"""
+
+NOTES:
+- In /home/ubuntu/env/tts/lib/python3.9/site-packages/TTS/vc/modules/freevc/speaker_encoder/speaker_encoder.py
+In the SpeakerEncoder class __init__, if the device is not correctly being set to GPU, just add these lines after "#Get the target device":
+```
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+self.device = device
+print(f"######################### HEREEEEEEEEEEE {self.device}")
+```
+
+"""
 xtts = {
     "voice_conversion": "voice_conversion_models/multilingual/vctk/freevc24",
     "voice_cloning": "tts_models/multilingual/multi-dataset/xtts_v2",

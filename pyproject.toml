@@ -8,6 +8,8 @@ description = "Suite of generation models for text, image, audio and video."
 dependencies = [
     "python-magic",
     "colorlog",
+    "soundfile",
+    "librosa",
     "torchsde",
     "easyocr",
     "Pillow",
@@ -23,6 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 gpu = ["timm", "flash_attn",]
 dev = [
+    "ipython",
     "pytest",
     "twine",
     "black",

@@ -22,7 +22,9 @@ pip install airoot
 ```
 **If NVIDIA CUDA GPU available, then do**
 ```
-pip install airoot[gpu]
+pip install airoot
+pip install timm
+pip install --no-build-isolation flash_attn
 ```
 Next, install ParlerTTS (text to speech model on cpu):
 ```

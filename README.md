@@ -26,7 +26,8 @@ pip install airoot
 pip install timm
 pip install --no-build-isolation flash_attn
 ```
-Next, install ParlerTTS (text to speech model on cpu):
+
+Next, install ParlerTTS (text to speech model):
 ```
 pip install git+https://github.com/huggingface/parler-tts.git
 ```
@@ -54,3 +55,42 @@ For generating audio (from text), see `audiogen` in [Audiogen Module](./src/airo
 For converting audio to text, i.e., transcription and translation, see `audiototext` in [Transcription Module](./src/airoot/audio/AudioToText.md)
 
 ---
+### ❗ Troubleshooting
+
+❗If issues detecting/using GPU, **ensure PyTorch and CUDA versions are compatible**! Otherwise torch might fail to detect the gpu. Ensure cuda is intalled and setup
+
+Get PyTorch and CUDA versions:
+```bash
+pip show torch
+nvcc --version
+nvidia-smi
+```
+```python
+import torch
+torch.version.cuda
+torch.cuda.is_available()
+torch.cuda.get_device_name(0)
+
+torch._C._cuda_init() # Can try initializing manually to see any errors
+```
+⭐ **See [Compatabilty Matrix](https://github.com/pytorch/pytorch/blob/main/RELEASE.md#release-compatibility-matrix) here and fix accordingly.**
+
+
+To Fix:
+
+1. Either install compatible PyTorch build
+```bash
+pip uninstall torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 # your CUDA version here
+```
+
+OR
+
+2. Install compatible CUDA ToolKit (for supported CUDA version).
+
+[Install CUDA](https://docs.nvidia.com/cuda/) for your OS and switch to that version. 
+```bash
+export PATH=/usr/local/cuda-12.1/bin:$PATH # Use the compatible cuda version here
+export LD_LIBRARY_PATH=/usr/local/cuda-12.1/lib64:$LD_LIBRARY_PATH
+```
+

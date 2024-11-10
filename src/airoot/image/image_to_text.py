@@ -9,6 +9,7 @@ __all__ = [
 
 import json
 import logging
+import re
 import subprocess
 import textwrap
 
@@ -22,6 +23,7 @@ from transformers import (
     Blip2Processor,
     BlipForConditionalGeneration,
     BlipProcessor,
+    LlavaForConditionalGeneration,
     LlavaNextForConditionalGeneration,
     LlavaNextProcessor,
 )
@@ -75,7 +77,9 @@ class Blip2(BaseModel):
         super().__init__()
         self.name = name
         self.template = "Question: {} Answer:"
-        self.default_prompt = "What is this image about?"
+        self.default_prompt = (
+            "What is this image about and what all are there in this image?"
+        )
         self.load_model()
 
     def load_model(self):
@@ -130,6 +134,68 @@ class EasyOCR(BaseModel):
             logger.error(f"Could not run EasyOCR due to the following error:\n{e}")
 
         return text
+
+
+class Llava(BaseModel):
+    # for image to text on gpu
+    # link: https://huggingface.co/docs/transformers/main/en/model_doc/llava_next#single-image-inference
+    # name="llava-hf/llava-1.5-7b-hf"
+
+    def __init__(self, name="llava-hf/llava-1.5-7b-hf"):
+        super().__init__()
+        self.name = name
+        self.default_prompt = textwrap.dedent(
+            """
+        Describe this image in detail.\nInclude any specific details on 
+        background colors, patterns, themes, settings/context (for example if it's a search page 
+        result, texting platform screenshot, pic of scenery etc.,), what might be going on in 
+        the picture (activities, conversations), what all and how many objects, animals and people 
+        are present, their orientations and activities, etc.,\n
+        Besides a general description, include any details that might help uniquely identify the image."""
+        )
+        self.load_model()
+
+    def load_model(self):
+        self.processor = AutoProcessor.from_pretrained(self.name)
+        if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+            self.model = LlavaForConditionalGeneration.from_pretrained(
+                self.name,
+                torch_dtype=self.torch_dtype,
+                low_cpu_mem_usage=True,
+                device_map="auto",
+            )
+        else:
+            self.model = LlavaForConditionalGeneration.from_pretrained(
+                self.name,
+                torch_dtype=self.torch_dtype,
+                low_cpu_mem_usage=True,
+            ).to(self.device)
+
+    def generate(self, image_data, text=None, max_length=512):
+        if text is None:
+            text = self.default_prompt
+        conversation = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image"},
+                    {"type": "text", "text": text},
+                ],
+            },
+        ]
+        image = image_data
+        prompt = self.processor.apply_chat_template(
+            conversation, add_generation_prompt=True
+        )
+        inputs = self.processor(images=image, text=prompt, return_tensors="pt").to(
+            self.device
+        )
+        output = self.model.generate(
+            **inputs, max_new_tokens=max_length, do_sample=False
+        )
+        generated_text = self.processor.decode(output[0], skip_special_tokens=True)
+        m = re.search("ASSISTANT:", generated_text)
+        return generated_text[m.end() :].strip()
 
 
 class LlavaNext(BaseModel):
@@ -291,9 +357,10 @@ config = {
         {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
     ],
     "cuda": [
-        {"model": Florence, "name": "microsoft/Florence-2-large-ft"},
-        {"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"},
         {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
+        {"model": Llava, "name": "llava-hf/llava-1.5-7b-hf"},
+        #        {"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"},
+        {"model": Florence, "name": "microsoft/Florence-2-large-ft"},
     ],
 }
 

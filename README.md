@@ -20,16 +20,15 @@ Popular LLMs usage, pdf_to_text, image_to_text, OCR support, image generation, i
 ```
 pip install airoot
 ```
-**If NVIDIA CUDA GPU available, then do**
-```
-pip install airoot
-pip install timm
-pip install --no-build-isolation flash_attn
-```
-
 Next, install ParlerTTS (text to speech model):
 ```
 pip install git+https://github.com/huggingface/parler-tts.git
+```
+
+**If NVIDIA CUDA GPU available, then additionally do**
+```
+pip install timm
+pip install --no-build-isolation flash_attn
 ```
 
 Extra, Dev mode:

@@ -76,7 +76,9 @@ def main():
     else:
         # no pipe and output file not provided, then print to stdout
         if not args.output:
-            # logger.info("Output text is:")
+            if model.device == "cuda":
+                # GPU models might throw warnings, becomes harder to see generated text in the end
+                logger.info("Output text is:")
             print(text)
 
 

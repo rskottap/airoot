@@ -237,7 +237,7 @@ class Florence(BaseModel):
                 logger.info(
                     f"Module {package} needed for Florence image model on GPU. Trying to `pip install {package}`."
                 )
-                pip.main(["install", package])
+                pip.main(["install", "--no-build-isolation", package])
             # set model
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.name, torch_dtype=self.torch_dtype, trust_remote_code=True

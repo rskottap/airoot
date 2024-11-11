@@ -7,7 +7,7 @@ import sys
 
 from PIL import Image
 
-from airoot.image import ImageToText
+from airoot.image import EasyOCR, ImageToText
 
 logger = logging.getLogger("airoot.ImageToText")
 
@@ -31,6 +31,11 @@ def parse_args():
         "--max-length",
         type=int,
         help="Max new tokens to generate. Defaults to 512 or 1024 based on model.",
+    )
+    parser.add_argument(
+        "--extract-text",
+        action="store_true",
+        help="Besides Description/QA, Extract any text present in the image using OCR model.",
     )
     parser.add_argument(
         "-o",
@@ -64,6 +69,13 @@ def main():
         text = (
             model.generate(image, text=args.prompt, max_length=args.max_length) + "\n"
         )
+
+    if args.extract_text:
+        del model  # free up memory
+        ocr_model = EasyOCR()
+        ocr_text = ocr_model.generate(image)
+        if ocr_text:
+            text += ocr_text + "\n"
 
     # Write to output file if provided
     if args.output:

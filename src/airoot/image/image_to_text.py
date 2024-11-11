@@ -95,6 +95,7 @@ class BlipVQA(BaseModel):
 
 class Blip2(BaseModel):
     # link: https://huggingface.co/Salesforce/blip2-opt-2.7b
+    # https://huggingface.co/docs/transformers/en/model_doc/blip-2#transformers.Blip2ForConditionalGeneration
     # name="Salesforce/blip2-opt-2.7b" # For BLIP2
 
     def __init__(self, name="Salesforce/blip2-opt-2.7b"):
@@ -111,9 +112,7 @@ class Blip2(BaseModel):
         ).to(self.device)
 
     def generate(self, image_data, text=None, max_length=1024):
-        if text is None:
-            text = self.template.format(self.default_prompt)
-        else:
+        if text is not None:
             text = self.template.format(text)
 
         inputs = self.processor(image_data, text=text, return_tensors="pt").to(
@@ -371,14 +370,13 @@ class Florence(BaseModel):
 
 config = {
     "cpu": [
-        {"model": BlipVQA, "name": "Salesforce/blip-vqa-base"},
         {"model": BlipCaption, "name": "Salesforce/blip-image-captioning-large"},
         {"model": Florence, "name": "microsoft/Florence-2-large-ft"},
     ],
     "cuda": [
         {"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"},
         {"model": Llava, "name": "llava-hf/llava-1.5-7b-hf"},
-        {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
+        # {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
         {"model": Florence, "name": "microsoft/Florence-2-large-ft"},
     ],
 }

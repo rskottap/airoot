@@ -5,9 +5,10 @@ import io
 import logging
 import sys
 
+import torch
 from PIL import Image
 
-from airoot.image import EasyOCR, ImageToText
+from airoot.image import BlipVQA, EasyOCR, ImageToText
 
 logger = logging.getLogger("airoot.ImageToText")
 
@@ -60,9 +61,14 @@ def main():
             raise Exception(
                 "Error: No image input provided. Provide image_file_path as a positional argument (or pipe image bytes into the command)."
             )
+        image_bytes = open(args.image_file_path.strip(), "rb").read()
         image = Image.open(args.image_file_path.strip()).convert("RGB")
 
-    model = ImageToText()
+    if not torch.cuda.is_available() and args.prompt is not None:  # VQA on cpu
+        model = BlipVQA()
+    else:
+        model = ImageToText()
+
     if not args.max_length:
         text = model.generate(image, text=args.prompt) + "\n"
     else:
@@ -73,7 +79,7 @@ def main():
     if args.extract_text:
         del model  # free up memory
         ocr_model = EasyOCR()
-        ocr_text = ocr_model.generate(image)
+        ocr_text = ocr_model.generate(image_bytes)
         if ocr_text:
             text += ocr_text + "\n"
 

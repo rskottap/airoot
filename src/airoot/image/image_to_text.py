@@ -1,8 +1,10 @@
 __all__ = [
     "ImageToText",
-    "Blip",
+    "BlipCaption",
+    "BlipVQA",
     "Blip2",
     "EasyOCR",
+    "Llava",
     "LlavaNext",
     "Florence",
 ]
@@ -22,7 +24,7 @@ from transformers import (
     Blip2ForConditionalGeneration,
     Blip2Processor,
     BlipForConditionalGeneration,
-    BlipProcessor,
+    BlipForQuestionAnswering,
     LlavaForConditionalGeneration,
     LlavaNextForConditionalGeneration,
     LlavaNextProcessor,
@@ -33,37 +35,59 @@ from airoot.base_model import BaseModel, get_default_model, set_default_model
 logger = logging.getLogger("airoot.ImageToText")
 
 
-class Blip(BaseModel):
+class BlipCaption(BaseModel):
     # for image to text on cpu
     # link: https://huggingface.co/Salesforce/blip-image-captioning-large
-    # name="Salesforce/blip-image-captioning-large"
-    # link: https://huggingface.co/Salesforce/blip-vqa-base
-    # name="Salesforce/blip-vqa-base" # For VQA
+    # https://huggingface.co/docs/transformers/en/model_doc/blip#transformers.BlipForConditionalGeneration
 
+    # name="Salesforce/blip-image-captioning-large"
     def __init__(self, name="Salesforce/blip-image-captioning-large"):
         super().__init__()
         self.name = name
-        self.default_prompt = "Describe this image in detail."
-        self.default_prompt = "What is this image about?"
         self.load_model()
 
     def load_model(self):
-        self.processor = BlipProcessor.from_pretrained(self.name)
+        self.processor = AutoProcessor.from_pretrained(self.name)
         self.model = BlipForConditionalGeneration.from_pretrained(
             self.name, torch_dtype=self.torch_dtype
         ).to(self.device)
 
     def generate(self, image_data, text=None, max_length=512):
-        # NOTE: blip-image-captioning-large and vqa-base don't do well with prompts
+        # NOTE: blip-image-captioning-large didn't do well with question like prompts, only conditional
         image = image_data
-        if self.name == "Salesforce/blip-image-captioning-large":
-            inputs = self.processor(image, return_tensors="pt").to(
-                self.device, self.torch_dtype
-            )
-        else:
-            inputs = self.processor(image, text=text, return_tensors="pt").to(
-                self.device, self.torch_dtype
-            )
+        inputs = self.processor(image, return_tensors="pt").to(
+            self.device, self.torch_dtype
+        )
+        out = self.model.generate(**inputs, max_new_tokens=max_length)
+        generated_text = self.processor.decode(out[0], skip_special_tokens=True).strip()
+        return generated_text
+
+
+class BlipVQA(BaseModel):
+    # for vqa on cpu
+    # link: https://huggingface.co/Salesforce/blip-vqa-base
+    # https://huggingface.co/docs/transformers/en/model_doc/blip#transformers.BlipForQuestionAnswering
+
+    # name="Salesforce/blip-vqa-base"
+    def __init__(self, name="Salesforce/blip-vqa-base"):
+        super().__init__()
+        self.name = name
+        self.default_prompt = "What is this image about? What is going on? What all objects/people/animals are there in this image, if any?"
+        self.load_model()
+
+    def load_model(self):
+        self.processor = AutoProcessor.from_pretrained(self.name)
+        self.model = BlipForQuestionAnswering.from_pretrained(
+            self.name, torch_dtype=self.torch_dtype
+        ).to(self.device)
+
+    def generate(self, image_data, text=None, max_length=512):
+        image = image_data
+        if text is None:
+            text = self.default_prompt
+        inputs = self.processor(image, text=text, return_tensors="pt").to(
+            self.device, self.torch_dtype
+        )
         out = self.model.generate(**inputs, max_new_tokens=max_length)
         generated_text = self.processor.decode(out[0], skip_special_tokens=True).strip()
         return generated_text
@@ -77,9 +101,7 @@ class Blip2(BaseModel):
         super().__init__()
         self.name = name
         self.template = "Question: {} Answer:"
-        self.default_prompt = (
-            "What is this image about and what all are there in this image?"
-        )
+        self.default_prompt = "What is this image about? What is going on? What all objects/people/animals are there in this image, if any?"
         self.load_model()
 
     def load_model(self):
@@ -88,7 +110,7 @@ class Blip2(BaseModel):
             self.name, torch_dtype=self.torch_dtype
         ).to(self.device)
 
-    def generate(self, image_data, text=None, max_length=512):
+    def generate(self, image_data, text=None, max_length=1024):
         if text is None:
             text = self.template.format(self.default_prompt)
         else:
@@ -129,7 +151,7 @@ class EasyOCR(BaseModel):
         try:
             text = " ".join(self.reader.readtext(image_data, detail=0))
             if text:
-                text = "Text extracted from image:\n" + text
+                text = "Text extracted from image:\n" + text.strip()
         except Exception as e:
             logger.error(f"Could not run EasyOCR due to the following error:\n{e}")
 
@@ -146,12 +168,7 @@ class Llava(BaseModel):
         self.name = name
         self.default_prompt = textwrap.dedent(
             """
-        Describe this image in detail.\nInclude any specific details on 
-        background colors, patterns, themes, settings/context (for example if it's a search page 
-        result, texting platform screenshot, pic of scenery etc.,), what might be going on in 
-        the picture (activities, conversations), what all and how many objects, animals and people 
-        are present, their orientations and activities, etc.,\n
-        Besides a general description, include any details that might help uniquely identify the image."""
+        Describe this image in detail.\n"""
         )
         self.load_model()
 
@@ -171,7 +188,7 @@ class Llava(BaseModel):
                 low_cpu_mem_usage=True,
             ).to(self.device)
 
-    def generate(self, image_data, text=None, max_length=512):
+    def generate(self, image_data, text=None, max_length=1024):
         if text is None:
             text = self.default_prompt
         conversation = [
@@ -211,9 +228,8 @@ class LlavaNext(BaseModel):
         Describe this image in detail.\nInclude any specific details on 
         background colors, patterns, themes, settings/context (for example if it's a search page 
         result, texting platform screenshot, pic of scenery etc.,), what might be going on in 
-        the picture (activities, conversations), what all and how many objects, animals and people 
-        are present, their orientations and activities, etc.,\n
-        Besides a general description, include any details that might help uniquely identify the image."""
+        the picture (activities, conversations), what all and how many objects, what all animals or people etc., 
+        are present if any, and so on."""
         )
         self.load_model()
 
@@ -225,7 +241,7 @@ class LlavaNext(BaseModel):
             low_cpu_mem_usage=True,
         ).to(self.device)
 
-    def generate(self, image_data, text=None, max_length=512):
+    def generate(self, image_data, text=None, max_length=1024):
         if text is None:
             text = self.default_prompt
         conversation = [
@@ -243,7 +259,9 @@ class LlavaNext(BaseModel):
         )
         inputs = self.processor(image, prompt, return_tensors="pt").to(self.device)
         output = self.model.generate(**inputs, max_new_tokens=max_length)
-        generated_text = self.processor.decode(output[0], skip_special_tokens=True)
+        generated_text = self.processor.decode(
+            output[0], skip_special_tokens=True
+        ).strip()
         return generated_text
 
 
@@ -353,13 +371,14 @@ class Florence(BaseModel):
 
 config = {
     "cpu": [
-        {"model": Blip, "name": "Salesforce/blip-image-captioning-large"},
-        {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
+        {"model": BlipVQA, "name": "Salesforce/blip-vqa-base"},
+        {"model": BlipCaption, "name": "Salesforce/blip-image-captioning-large"},
+        {"model": Florence, "name": "microsoft/Florence-2-large-ft"},
     ],
     "cuda": [
-        {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
+        {"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"},
         {"model": Llava, "name": "llava-hf/llava-1.5-7b-hf"},
-        #        {"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"},
+        {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
         {"model": Florence, "name": "microsoft/Florence-2-large-ft"},
     ],
 }

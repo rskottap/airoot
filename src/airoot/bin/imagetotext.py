@@ -94,7 +94,7 @@ def main():
     else:
         # no pipe and output file not provided, then print to stdout
         if not args.output:
-            if model.device == "cuda":
+            if torch.cuda.is_available():
                 # GPU models might throw warnings, becomes harder to see generated text in the end
                 logger.info("Output text is:")
             print(text)

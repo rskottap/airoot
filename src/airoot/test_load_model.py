@@ -41,7 +41,15 @@ def main():
     model = model[args.idx]
 
     m = model["model"](name=model["name"])
-    # _ = m.generate(args.text)
+    if args.module == "ImageToText":
+        # try a sample generation to see if both model and image can be loaded into memory
+        import requests
+        from PIL import Image
+
+        url = "http://images.cocodataset.org/val2017/000000039769.jpg"
+        image = Image.open(requests.get(url, stream=True).raw).convert("RGB")
+        text = m.generate(image)
+        print(f"GENERATED DESCRIPTION for sample test image:\n {text}\n")
 
 
 if __name__ == "__main__":

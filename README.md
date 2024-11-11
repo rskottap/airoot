@@ -54,9 +54,19 @@ For generating audio (from text), see `audiogen` in [Audiogen Module](./src/airo
 For converting audio to text, i.e., transcription and translation, see `audiototext` in [Transcription Module](./src/airoot/audio/AudioToText.md)
 
 ---
-### ❗ Troubleshooting
+### Notes 📝
 
-❗If issues detecting/using GPU, **ensure PyTorch and CUDA versions are compatible**! Otherwise torch might fail to detect the gpu. Ensure cuda is intalled and setup
+- Do `get_models(<Module>)` (AudioToText, ImageToText etc.,)(see `src/airoot/etc/__init__.py` modules for full list) in python to see the config for default models to use for that module based on CPU vs GPU availablity. 
+
+- The **first time** these commands are run, the script `test_load_model.py` is run with the different models available (in order), and sets the **first model that can be successfully loaded into memory** as the **default model** for that machine. Writes the default model to `~/.cache/airoot/<module>/...`. 
+    - This can take long the first time, so please allow it some time.
+    - For subsequent runs, by default uses the model in this file (if file exists) and doesn't try to re-check again. So, next runs should be slightly faster.
+    - To force re-checking compatability/model loading again, debugging etc., simply remove the file `rm ~/.cache/airoot/<module>/.../model.keys`. 
+
+---
+### Troubleshooting ❗
+
+❗If issues detecting/using GPU, **ensure PyTorch and CUDA versions are compatible**! Otherwise torch might fail to detect the gpu. Ensure cuda is installed and setup. (Can try running a simple cuda script compiled with nvcc to see if GPU and drivers are working properly)
 
 Get PyTorch and CUDA versions:
 ```bash

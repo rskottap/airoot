@@ -97,3 +97,7 @@ def get_models(module: str) -> dict:
         from airoot.image.image_to_text import config
 
         return config
+    if module == "TextToImage":
+        from airoot.image.text_to_image import config
+
+        return config

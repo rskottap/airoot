@@ -3,6 +3,7 @@ modules = [
     "TextToAudio",
     "AudioToText",
     "ImageToText",
+    "TextToImage",
 ]
 log_colors = {
     "DEBUG": "green",

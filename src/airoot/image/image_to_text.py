@@ -159,7 +159,7 @@ class EasyOCR(BaseModel):
 
 class Llava(BaseModel):
     # for image to text on gpu
-    # link: https://huggingface.co/docs/transformers/main/en/model_doc/llava_next#single-image-inference
+    # link: https://huggingface.co/docs/transformers/main/en/model_doc/llava#single-image-inference
     # name="llava-hf/llava-1.5-7b-hf"
 
     def __init__(self, name="llava-hf/llava-1.5-7b-hf"):

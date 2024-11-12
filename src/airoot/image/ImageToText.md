@@ -1,5 +1,5 @@
 # Image Captioning / VQA (ImageToText) Module
-Quickly generate detailed captions/descriptions for images and do visual question answering tasks!
+Quickly generate detailed captions/descriptions for images and do visual question answering (VQA) tasks!
 
 ❗ GPU highly recommended for best outputs and faster inferences.
 
@@ -11,8 +11,7 @@ imagetotext <sample_image.png>
 ```
 imagetotext <sample_image.png> --prompt <prompt/question> --max-length 512
 ```
-❗ Recommended to use `--prompt/-p` (and `--max-length/-l`) options only on default Llava models for **GPU** for VQA and other tasks. CPU models don't do well with (and so, don't use) the additional prompt. 
-
+Provide user `--prompt/-p` i.e., question for VQA tasks.
 ```
 imagetotext <sample_image.png> --extract-text
 ```
@@ -27,12 +26,19 @@ cat <sample_image.png> | imagetotext >> out.txt
 - Also supports piping in audio data and piping out the text to/from upstream/downstream processes.
 
 ⭐ Can use together with `imagegen` to generate sample images and describe/vqa it back.
-```
-TODO
-```
 
-### Examples
-TODO
+#### Examples
+*On CPU:*
+
+<img src="../../../include/images/imagetotext-cpu-examples.png" alt="CPU" width="80%"/>
+
+<img src="../../../include/images/misc-3.jpeg" alt="Cars" width="20%"/> 
+<img src="../../../include/images/christmas-presents.jpg" alt="Christmas" width="20%"/>
+
+*On GPU:*
+
+<img src="../../../include/images/peyto-banff.jpg" alt="Banff" width="20%"/> 
+<img src="../../../include/images/text-1.jpeg" alt="HP Text" width="20%"/>
 
 ### Via Library
 In Python
@@ -69,17 +75,21 @@ bboxes = florence.generate(image, task_prompt="<OD>")
 flower_bbox_outputs = florence.generate(image, task_prompt="<CAPTION_TO_PHRASE_GROUNDING>", text="flower")
 ```
 
----
 ## Models Used
-TODO
 
----
+| Model Family   |   Docs / Links          |
+|----------------|-----------------------|
+| Salesforce BLIP      | [BLIP Image Captioning](https://huggingface.co/docs/transformers/en/model_doc/blip#transformers.BlipForConditionalGeneration) &#124; [BLIP VQA](https://huggingface.co/docs/transformers/en/model_doc/blip#transformers.BlipForQuestionAnswering)          |
+| LLaVa      | [LLaVa](https://huggingface.co/docs/transformers/main/en/model_doc/llava#single-image-inference) &#124; [LLaVa-NeXT](https://huggingface.co/docs/transformers/main/en/model_doc/llava_next#single-image-inference)          |
+| Microsoft Florence      | [Florence](https://huggingface.co/microsoft/Florence-2-large-ft)           |
+| EasyOCR      | [EasyOCR GitHub](https://github.com/JaidedAI/EasyOCR)            |
+
+- Florence model has many other tasks like object detection, phrase grounding, ocr etc.,!
+
 ## Notes 📝
 
-- `"Salesforce/blip-image-captioning-large"` (CPU models) don't do well at all with the extra user prompt (just outputs the prompt back and not description or answers). So prompt is not used in the code for `"Salesforce/blip-image-captioning-large"` (Blip model).
+- `"Salesforce/blip-image-captioning-large"` (CPU model) doesn't do well at all with the extra user prompt (just outputs the prompt back and not description or answers). So on CPU, Blip VQA model is used instead, if prompt/question is provided. Blip VQA is good with single word and boolean answers and simple counting tasks.
 
-- Microsoft Florence model only uses/takes additional user prompt (text) if the task is "<CAPTION_TO_PHRASE_GROUNDING>". See Model link for full list of available tasks and output formats.
-
-- For user prompt in visual question and answering (VQA) tasks for **Blip2** model (especially), make sure the prompt/question is actually in question format: starting with what/where/when/who/how etc., and ending with a question mark '?'.
+- Microsoft Florence model only uses/takes additional user prompt (text) if the task is `"<CAPTION_TO_PHRASE_GROUNDING>"`. See Model link for full list of available tasks and output formats.
 
 - GPU highly recommended for best outputs, detailed decsriptions and other tasks with user prompts.

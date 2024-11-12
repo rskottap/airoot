@@ -28,19 +28,23 @@ cat <sample_image.png> | imagetotext >> out.txt
 ⭐ Can use together with `imagegen` to generate sample images and describe/vqa it back.
 
 #### Examples
-*On CPU:*
-
-<img src="../../../include/images/imagetotext-cpu-examples.png" alt="CPU" width="80%"/>
+*Were run on CPU:*
 
 <p>
-    <img src="../../../include/images/misc-3.jpeg" alt="Cars" width="20%"/>
-    <img src="../../../include/images/christmas-presents.jpg" alt="Christmas" width="20%"/>
+    <img src="../../../include/images/imagetotext-cpu-examples.png" alt="CPU" width="65%"/>
+    <img src="../../../include/images/misc-3.jpeg" alt="Cars" width="15%"/>
+    <img src="../../../include/images/christmas-presents.jpg" alt="Christmas" width="15%"/>
 </p>
 
-*On GPU:*
+*Were run on GPU:*
 
 <p>
-    <img src="../../../include/images/peyto-banff.jpg" alt="Banff" width="20%"/> 
+    <img src="../../../include/images/imagetotext-gpu-banff.png" alt="GPU Banff" width="70%"/>
+    <img src="../../../include/images/peyto-banff.jpg" alt="Banff" width="20%"/>
+</p>
+
+<p>
+     <img src="../../../include/images/imagetotext-gpu-hp.png" alt="GPU Text extract" width="70%"/>
     <img src="../../../include/images/text-1.jpeg" alt="HP Text" width="20%"/>
 </p>
 

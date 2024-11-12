@@ -16,6 +16,8 @@ dependencies = [
     "transformers",
     "accelerate",
     "optimum",
+    "safetensors",
+    "invisible_watermark",
     "assure",
     "mmry",
     "diffusers[torch]",

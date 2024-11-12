@@ -32,13 +32,17 @@ cat <sample_image.png> | imagetotext >> out.txt
 
 <img src="../../../include/images/imagetotext-cpu-examples.png" alt="CPU" width="80%"/>
 
-<img src="../../../include/images/misc-3.jpeg" alt="Cars" width="20%"/> 
-<img src="../../../include/images/christmas-presents.jpg" alt="Christmas" width="20%"/>
+<p>
+    <img src="../../../include/images/misc-3.jpeg" alt="Cars" width="20%"/>
+    <img src="../../../include/images/christmas-presents.jpg" alt="Christmas" width="20%"/>
+</p>
 
 *On GPU:*
 
-<img src="../../../include/images/peyto-banff.jpg" alt="Banff" width="20%"/> 
-<img src="../../../include/images/text-1.jpeg" alt="HP Text" width="20%"/>
+<p>
+    <img src="../../../include/images/peyto-banff.jpg" alt="Banff" width="20%"/> 
+    <img src="../../../include/images/text-1.jpeg" alt="HP Text" width="20%"/>
+</p>
 
 ### Via Library
 In Python

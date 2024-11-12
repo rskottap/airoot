@@ -187,6 +187,11 @@ class Llava(BaseModel):
                 low_cpu_mem_usage=True,
             ).to(self.device)
 
+        self.processor.patch_size = self.model.config.vision_config.patch_size
+        self.processor.vision_feature_select_strategy = (
+            self.model.config.vision_feature_select_strategy
+        )
+
     def generate(self, image_data, text=None, max_length=1024):
         if text is None:
             text = self.default_prompt

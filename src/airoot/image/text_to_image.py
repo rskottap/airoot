@@ -1,8 +1,6 @@
 __all__ = [
     "TextToImage",
-    "SDXLBase",
-    "SDXLRefiner",
-    "SDXLFull",
+    "SDXL",
 ]
 
 import json
@@ -21,164 +19,58 @@ from airoot.base_model import BaseModel, get_default_model, set_default_model
 logger = logging.getLogger("airoot.TextToImage")
 
 
-class SDXLBase(BaseModel):
+class SDXL(BaseModel):
     # for text to image on gpu
-    # HF docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_xl#diffusers.StableDiffusionXLPipeline
+    # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_xl#diffusers.StableDiffusionXLPipeline
     # Model card: https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
+    # Pipelines: https://huggingface.co/docs/diffusers/using-diffusers/sdxl#stable-diffusion-xl
 
     # base="stabilityai/stable-diffusion-xl-base-1.0", 6.7GB
     def __init__(self, name="stabilityai/stable-diffusion-xl-base-1.0"):
         super().__init__()
-        self.base_name = name
+        self.name = name
         self.load_model()
 
     def load_model(self):
-        # load base model
-        self.base = DiffusionPipeline.from_pretrained(
-            self.base_name,
+        # load pipeline
+        self.pipe = StableDiffusionXLPipeline.from_pretrained(
+            self.name,
             torch_dtype=self.torch_dtype,
             variant="fp16",
             use_safetensors=True,
-        )  # .to(self.device)
-
-        # When using torch >= 2.0, you can improve the inference speed by 20-30% with torch.compile.
-        # self.base.unet = torch.compile(self.base.unet, mode="reduce-overhead", fullgraph=True)
-        self.base.enable_model_cpu_offload()
+        )  # .to("cuda")
+        self.pipe.enable_model_cpu_offload()
 
     def generate(
         self,
         prompt,
         prompt_2=None,
         negative_prompt=None,
+        init_image=None,
+        mask_image=None,
         n_steps=40,
-        denoising_end=0.8,
-        target_size=(1024, 1024),
-        output_type="latent",
+        denoising_end=None,
+        strength=None,
+        guidance_scale=7.0,
     ):
         # returns Tensor object
-        base_image = self.base(
+        generated_image = self.pipe(
             prompt=prompt,
             prompt_2=prompt_2,
             negative_prompt=negative_prompt,
             num_inference_steps=n_steps,
             denoising_end=denoising_end,
-            output_type=output_type,
-            original_size=target_size,
-            target_size=target_size,
-        ).images
-        return base_image
-
-    def convert_to_pil(base_image):
-        import torchvision.transforms as transforms
-
-        to_pil_image = transforms.ToPILImage()
-        pil_image = to_pil_image(base_image)
-        return pil_image
-
-
-class SDXLRefiner(BaseModel):
-    # for text to image on gpu
-    # HF docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_xl#diffusers.StableDiffusionXLPipeline
-    # Model card: https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
-
-    # refiner="stabilityai/stable-diffusion-xl-refiner-1.0", 4.4GB
-    def __init__(self, name="stabilityai/stable-diffusion-xl-refiner-1.0"):
-        super().__init__()
-        self.refiner_name = "stabilityai/stable-diffusion-xl-refiner-1.0"
-        base = SDXLBase()
-        self.text_encoder_2 = base.base.text_encoder_2
-        self.vae = base.base.vae
-        del base
-        self.load_model()
-
-    def load_model(self):
-        self.refiner = DiffusionPipeline.from_pretrained(
-            self.refiner_name,
-            text_encoder_2=self.text_encoder_2,
-            vae=self.vae,
-            torch_dtype=self.torch_dtype,
-            use_safetensors=True,
-            variant="fp16",
-        )  # .to(self.device)
-
-        # When using torch >= 2.0, you can improve the inference speed by 20-30% with torch.compile.
-        # self.refiner.unet = torch.compile(self.refiner.unet, mode="reduce-overhead", fullgraph=True)
-        self.refiner.enable_model_cpu_offload()
-
-    def generate(
-        self,
-        guide_image,
-        prompt,
-        prompt_2=None,
-        negative_prompt=None,
-        n_steps=40,
-        denoising_end=0.8,
-        target_size=(1024, 1024),
-    ):
-        # returns PIL.Image.Image type
-        refined_image = self.refiner(
-            prompt=prompt,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_start=denoising_end,
-            original_size=target_size,
-            target_size=target_size,
-            image=guide_image,
+            guidance_scale=guidance_scale,
         ).images[0]
-        return refined_image
-
-
-class SDXLFull(BaseModel):
-    def __init__(self, name="full"):
-        super().__init__()
-        self.load_model()
-
-    def load_model(self):
-        # load base model
-        self.base = SDXLBase()
-        self.refiner = SDXLRefiner()
-        self.base_name = self.base.base_name
-        self.refiner_name = self.refiner.refiner_name
-
-    def generate(
-        self,
-        prompt,
-        prompt_2=None,
-        negative_prompt=None,
-        n_steps=40,
-        denoising_end=0.8,
-        target_size=(1024, 1024),
-    ):
-        # returns PIL.Image.Image type
-        base_image = self.base.generate(
-            prompt=prompt,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            n_steps=n_steps,
-            denoising_end=denoising_end,
-            output_type="latent",
-            target_size=target_size,
-        )
-
-        refined_image = self.refiner.generate(
-            guide_image=base_image,
-            prompt=prompt,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            n_steps=n_steps,
-            denoising_end=denoising_end,
-            target_size=target_size,
-        )
-        return refined_image
+        return generated_image
 
 
 config = {
     "cpu": [
-        {"model": SDXLFull, "name": "full"},
+        {"model": SDXL, "name": "stabilityai/stable-diffusion-xl-base-1.0"},
     ],
     "cuda": [
-        {"model": SDXLFull, "name": "full"},
+        {"model": SDXL, "name": "stabilityai/stable-diffusion-xl-base-1.0"},
     ],
 }
 

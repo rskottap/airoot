@@ -1,6 +1,14 @@
 __all__ = [
     "TextToImage",
     "SDXL",
+    "SDXLImg2Img",
+    "SDXLInpaint",
+    "SD",
+    "SDImg2Img",
+    "SDInpaint",
+    "Kadinsky",
+    "KadinskyImg2Img",
+    "KadinskyInpaint",
 ]
 
 import json
@@ -9,14 +17,76 @@ import subprocess
 
 import torch
 from diffusers import (
-    DiffusionPipeline,
+    AutoPipelineForImage2Image,
+    AutoPipelineForInpainting,
+    AutoPipelineForText2Image,
+    StableDiffusionImg2ImgPipeline,
+    StableDiffusionInpaintPipeline,
+    StableDiffusionPipeline,
     StableDiffusionXLImg2ImgPipeline,
+    StableDiffusionXLInpaintPipeline,
     StableDiffusionXLPipeline,
 )
 
 from airoot.base_model import BaseModel, get_default_model, set_default_model
 
 logger = logging.getLogger("airoot.TextToImage")
+ignore_for_types = {
+    "text2image": ["init_image", "mask_image", "strength"],
+    "img2img": ["mask_image"],
+    "inpainting": [],
+}
+
+
+class ImageGen(BaseModel):
+    def __init__(self):
+        super().__init__()
+        # init_image, mask_image and strength are the only arguments that vary in
+        # whether or not they're passed into the different pipes
+        self.default_args = {
+            "init_image": None,
+            "mask_image": None,
+            "prompt_2": None,
+            "negative_prompt": None,
+            "n_steps": 40,
+            "denoising_end": None,
+            "strength": None,
+            "guidance_scale": 7.0,
+        }
+
+    def load_model(self):
+        raise NotImplementedError(
+            "load_model() must be implemented in the derived class. Needs to set self.pipe, self.default_args and self.type"
+        )
+
+    def generate(self, prompt, **kwargs):
+        prompt = prompt.strip()
+        assert (
+            prompt
+        ), "Given empty prompt. Prompt needs to be passed and should be non-empty"
+        if self.type == "img2img":
+            assert (
+                kwargs["init_image"] is not None
+            ), "Please pass an initial image for Img2Img generation"
+        if self.type == "inpainting":
+            assert (kwargs["init_image"] is not None) and (
+                kwargs["mask_image"] is not None
+            ), "Inpaiting needs both original image and mask image"
+
+        args = dict()
+        args["prompt"] = prompt
+
+        for k, v in self.default_args.items():
+            if k in ignore_for_types[self.type]:
+                continue
+            else:
+                if k in kwargs:
+                    args[k] = kwargs[k]
+                else:
+                    args[k] = self.default_args
+
+        generated_image = self.pipe(**args).images[0]
+        return generated_image
 
 
 class SDXL(BaseModel):
@@ -44,11 +114,149 @@ class SDXL(BaseModel):
     def generate(
         self,
         prompt,
-        prompt_2=None,
-        negative_prompt=None,
         init_image=None,
         mask_image=None,
+        prompt_2=None,
+        negative_prompt=None,
         n_steps=40,
+        denoising_end=None,
+        strength=None,
+        guidance_scale=7.0,
+    ):
+        generated_image = self.pipe(
+            prompt=prompt,
+            prompt_2=prompt_2,
+            negative_prompt=negative_prompt,
+            num_inference_steps=n_steps,
+            denoising_end=denoising_end,
+            guidance_scale=guidance_scale,
+        ).images[0]
+        return generated_image
+
+
+class SDXLImg2Img(BaseModel):
+    # for text+image to image on gpu
+    # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_xl#diffusers.StableDiffusionXLPipeline
+    # Model card: https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
+    # Pipelines: https://huggingface.co/docs/diffusers/using-diffusers/sdxl#stable-diffusion-xl
+
+    # name="stabilityai/stable-diffusion-xl-refiner-1.0", 4.4GB
+    def __init__(self, name="stabilityai/stable-diffusion-xl-refiner-1.0"):
+        super().__init__()
+        self.name = name
+        self.load_model()
+
+    def load_model(self):
+        # load pipeline
+        self.pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+        )
+        self.pipe.enable_model_cpu_offload()
+
+    def generate(
+        self,
+        prompt,
+        init_image,
+        mask_image=None,
+        prompt_2=None,
+        negative_prompt=None,
+        n_steps=40,
+        denoising_end=None,
+        strength=0.75,
+        guidance_scale=7.0,
+    ):
+        # returns Tensor object
+        generated_image = self.pipe(
+            prompt=prompt,
+            image=init_image,
+            prompt_2=prompt_2,
+            negative_prompt=negative_prompt,
+            num_inference_steps=n_steps,
+            denoising_end=denoising_end,
+            strength=strength,
+            guidance_scale=guidance_scale,
+        ).images[0]
+        return generated_image
+
+
+class SDXLInpaint(BaseModel):
+    # for inpainting on gpu
+    # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_xl#diffusers.StableDiffusionXLPipeline
+
+    # name="stabilityai/stable-diffusion-xl-base-1.0", 6.7GB
+    def __init__(self, name="stabilityai/stable-diffusion-xl-base-1.0"):
+        super().__init__()
+        self.name = name
+        self.load_model()
+
+    def load_model(self):
+        # load pipeline
+        self.pipe = StableDiffusionXLInpaintPipeline.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+            variant="fp16",
+            use_safetensors=True,
+        )
+        self.pipe.enable_model_cpu_offload()
+
+    def generate(
+        self,
+        prompt,
+        init_image,
+        mask_image,
+        prompt_2=None,
+        negative_prompt=None,
+        n_steps=40,
+        denoising_end=None,
+        strength=0.75,
+        guidance_scale=7.0,
+    ):
+        # returns Tensor object
+        generated_image = self.pipe(
+            prompt=prompt,
+            image=init_image,
+            mask_image=mask_image,
+            prompt_2=prompt_2,
+            negative_prompt=negative_prompt,
+            num_inference_steps=n_steps,
+            denoising_end=denoising_end,
+            strength=strength,
+            guidance_scale=guidance_scale,
+        ).images[0]
+        return generated_image
+
+
+class SD(BaseModel):
+    # for text to image on cpu
+    # Model card: https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5
+    # See Limitations section
+
+    # name="sd-legacy/stable-diffusion-v1-5", 5.2GB
+    # with 20 steps ~15 min, 10 steps ~5 min, 5 steps ~2.5 min
+    def __init__(self, name="sd-legacy/stable-diffusion-v1-5"):
+        super().__init__()
+        self.name = name
+        self.load_model()
+
+    def load_model(self):
+        # load pipeline
+        self.pipe = StableDiffusionPipeline.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+        )  # .to(self.device)
+
+        if self.device == "cuda":
+            self.pipe.enable_model_cpu_offload()
+
+    def generate(
+        self,
+        prompt,
+        init_image=None,
+        mask_image=None,
+        prompt_2=None,
+        negative_prompt=None,
+        n_steps=20,
         denoising_end=None,
         strength=None,
         guidance_scale=7.0,
@@ -65,9 +273,264 @@ class SDXL(BaseModel):
         return generated_image
 
 
+class SDImg2Img(BaseModel):
+    # for text+image to image on cpu
+    # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/img2img#diffusers.StableDiffusionImg2ImgPipeline
+
+    # name="sd-legacy/stable-diffusion-v1-5", 5.2GB
+    def __init__(self, name="sd-legacy/stable-diffusion-v1-5"):
+        super().__init__()
+        self.name = name
+        self.load_model()
+
+    def load_model(self):
+        # load pipeline
+        self.pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+        )
+        if self.device == "cuda":
+            self.pipe.enable_model_cpu_offload()
+
+    def generate(
+        self,
+        prompt,
+        init_image,
+        mask_image=None,
+        prompt_2=None,
+        negative_prompt=None,
+        n_steps=20,
+        denoising_end=None,
+        strength=0.75,
+        guidance_scale=7.5,
+    ):
+        init_image = init_image.convert("RGB").resize((768, 512))
+        # returns Tensor object
+        generated_image = self.pipe(
+            prompt=prompt,
+            image=init_image,
+            prompt_2=prompt_2,
+            negative_prompt=negative_prompt,
+            num_inference_steps=n_steps,
+            denoising_end=denoising_end,
+            strength=strength,
+            guidance_scale=guidance_scale,
+        ).images[0]
+        return generated_image
+
+
+class SDInpaint(BaseModel):
+    # for inpainting on cpu
+    # Model card: https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting
+
+    # ** init_image and mask_image should be PIL images.
+    # ** The mask structure is white for inpainting and black for keeping as is
+
+    # name="sd-legacy/stable-diffusion-inpainting", 5.2GB
+    # with 10 steps ~3.5 min, 20steps ~7-10min
+    def __init__(self, name="sd-legacy/stable-diffusion-inpainting"):
+        super().__init__()
+        self.name = name
+        self.load_model()
+
+    def load_model(self):
+        # load pipeline
+        self.pipe = StableDiffusionInpaintPipeline.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+        )  # .to(self.device)
+
+        if self.device == "cuda":
+            self.pipe.enable_model_cpu_offload()
+
+    def generate(
+        self,
+        prompt,
+        init_image,
+        mask_image,
+        prompt_2=None,
+        negative_prompt=None,
+        n_steps=20,
+        denoising_end=None,
+        strength=0.75,
+        guidance_scale=7.0,
+    ):
+        # returns Tensor object
+        generated_image = self.pipe(
+            prompt=prompt,
+            image=init_image,
+            mask_image=mask_image,
+            prompt_2=prompt_2,
+            negative_prompt=negative_prompt,
+            num_inference_steps=n_steps,
+            denoising_end=denoising_end,
+            strength=strength,
+            guidance_scale=guidance_scale,
+        ).images[0]
+        return generated_image
+
+
+class Kadinsky(BaseModel):
+    # for text to image on cpu
+    # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/kandinsky#diffusers.KandinskyCombinedPipeline
+    # Model card: https://huggingface.co/kandinsky-community/kandinsky-2-1
+
+    # base="kandinsky-community/kandinsky-2-1"
+    def __init__(self, name="kandinsky-community/kandinsky-2-1"):
+        super().__init__()
+        self.name = name
+        self.load_model()
+
+    def load_model(self):
+        # load pipeline
+        self.pipe = AutoPipelineForText2Image.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+        )
+        if self.device == "cuda":
+            self.pipe.enable_model_cpu_offload()
+
+    def generate(
+        self,
+        prompt,
+        init_image=None,
+        mask_image=None,
+        prompt_2=None,
+        negative_prompt="low quality, bad quality",
+        n_steps=40,
+        denoising_end=None,
+        strength=None,
+        guidance_scale=1.0,
+        height=768,
+        width=768,
+    ):
+        # returns Tensor object
+        generated_image = self.pipe(
+            prompt=prompt,
+            prompt_2=prompt_2,
+            negative_prompt=negative_prompt,
+            num_inference_steps=n_steps,
+            denoising_end=denoising_end,
+            prior_guidance_scale=guidance_scale,
+            height=height,
+            width=width,
+        ).images[0]
+        return generated_image
+
+
+class KadinskyImg2Img(BaseModel):
+    # for text+image to image on cpu
+    # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/kandinsky#diffusers.KandinskyCombinedPipeline
+    # Model card: https://huggingface.co/kandinsky-community/kandinsky-2-1
+
+    # base="kandinsky-community/kandinsky-2-1"
+    def __init__(self, name="kandinsky-community/kandinsky-2-1"):
+        super().__init__()
+        self.name = name
+        self.load_model()
+
+    def load_model(self):
+        # load pipeline
+        self.pipe = AutoPipelineForImage2Image.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+        )
+        if self.device == "cuda":
+            self.pipe.enable_model_cpu_offload()
+
+    def generate(
+        self,
+        prompt,
+        init_image,
+        mask_image=None,
+        prompt_2=None,
+        negative_prompt="low quality, bad quality",
+        n_steps=40,
+        denoising_end=None,
+        strength=0.3,
+        guidance_scale=1.0,
+        height=768,
+        width=768,
+    ):
+        init_image = init_image.convert("RGB")
+        init_image.thumbnail((height, width))
+
+        # returns Tensor object
+        generated_image = self.pipe(
+            prompt=prompt,
+            image=init_image,
+            prompt_2=prompt_2,
+            negative_prompt=negative_prompt,
+            num_inference_steps=n_steps,
+            denoising_end=denoising_end,
+            strength=strength,
+            prior_guidance_scale=guidance_scale,
+            height=height,
+            width=width,
+        ).images[0]
+        return generated_image
+
+
+class KadinskyInpaint(BaseModel):
+    # for image inpainting on cpu
+    # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/kandinsky#diffusers.KandinskyCombinedPipeline
+    # Model card: https://huggingface.co/kandinsky-community/kandinsky-2-1
+
+    # ** mask needs to be white
+    # base="kandinsky-community/kandinsky-2-1-inpaint"
+    def __init__(self, name="kandinsky-community/kandinsky-2-1-inpaint"):
+        super().__init__()
+        self.name = name
+        self.load_model()
+
+    def load_model(self):
+        # load pipeline
+        self.pipe = AutoPipelineForInpainting.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+        )
+        if self.device == "cuda":
+            self.pipe.enable_model_cpu_offload()
+
+    def generate(
+        self,
+        prompt,
+        init_image,
+        mask_image,
+        prompt_2=None,
+        negative_prompt="low quality, bad quality",
+        n_steps=40,
+        denoising_end=None,
+        strength=0.3,
+        guidance_scale=1.0,
+        height=768,
+        width=768,
+    ):
+        init_image = init_image.convert("RGB")
+        init_image.thumbnail((height, width))
+        mask_image = mask_image.convert("RGB")
+        mask_image.thumbnail((height, width))
+
+        # returns Tensor object
+        generated_image = self.pipe(
+            prompt=prompt,
+            image=init_image,
+            mask_image=mask_image,
+            prompt_2=prompt_2,
+            negative_prompt=negative_prompt,
+            num_inference_steps=n_steps,
+            denoising_end=denoising_end,
+            strength=strength,
+            prior_guidance_scale=guidance_scale,
+            height=height,
+            width=width,
+        ).images[0]
+        return generated_image
+
+
 config = {
     "cpu": [
-        {"model": SDXL, "name": "stabilityai/stable-diffusion-xl-base-1.0"},
+        {"model": SD, "name": "sd-legacy/stable-diffusion-v1-5"},
     ],
     "cuda": [
         {"model": SDXL, "name": "stabilityai/stable-diffusion-xl-base-1.0"},

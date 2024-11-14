@@ -22,6 +22,7 @@ from diffusers import (
     AutoPipelineForText2Image,
     StableDiffusionImg2ImgPipeline,
     StableDiffusionInpaintPipeline,
+    StableDiffusionInstructPix2PixPipeline,
     StableDiffusionPipeline,
     StableDiffusionXLImg2ImgPipeline,
     StableDiffusionXLInpaintPipeline,
@@ -286,6 +287,7 @@ class Kadinsky(ImageGen):
     # Model card: https://huggingface.co/kandinsky-community/kandinsky-2-1
 
     # base="kandinsky-community/kandinsky-2-1"
+    # for 20 steps ~15min,
     def __init__(self, name="kandinsky-community/kandinsky-2-1"):
         super().__init__()
         self.name = name
@@ -341,7 +343,8 @@ class KadinskyImg2Img(ImageGen):
     def generate(self, prompt, **kwargs):
         h = kwargs.get("height", self.default_args["height"])
         w = kwargs.get("width", self.default_args["width"])
-        kwargs["image"] = kwargs["image"].convert("RGB").thumbnail((h, w))
+        kwargs["image"] = kwargs["image"].convert("RGB")
+        kwargs["image"].thumbnail((h, w))
 
         generated_image = super().generate(prompt, **kwargs)
         return generated_image
@@ -379,9 +382,43 @@ class KadinskyInpaint(ImageGen):
     def generate(self, prompt, **kwargs):
         h = kwargs.get("height", self.default_args["height"])
         w = kwargs.get("width", self.default_args["width"])
-        kwargs["image"] = kwargs["image"].convert("RGB").thumbnail((h, w))
-        kwargs["mask_image"] = kwargs["mask_image"].convert("RGB").thumbnail((h, w))
+        kwargs["image"] = kwargs["image"].convert("RGB")
+        kwargs["mask_image"] = kwargs["mask_image"].convert("RGB")
+        kwargs["image"].thumbnail((h, w))
+        kwargs["mask_image"].thumbnail((h, w))
 
+        generated_image = super().generate(prompt, **kwargs)
+        return generated_image
+
+
+class InstructPix2Pix(ImageGen):
+    # for image editing
+    # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/pix2pix#diffusers.StableDiffusionInstructPix2PixPipeline
+
+    # name="timbrooks/instruct-pix2pix", 4.4GB
+    def __init__(self, name="timbrooks/instruct-pix2pix"):
+        super().__init__()
+        self.name = name
+        self.type = types[1]
+        self.default_args = {
+            "negative_prompt": None,
+            "num_inference_steps": 40,
+            "strength": 0.75,
+            "guidance_scale": 7.5,
+        }
+        self.load_model()
+
+    def load_model(self):
+        # load pipeline
+        self.pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+            self.name,
+            torch_dtype=self.torch_dtype,
+        )
+        if self.device == "cuda":
+            self.pipe.enable_model_cpu_offload()
+
+    def generate(self, prompt, **kwargs):
+        kwargs["image"] = kwargs["image"].convert("RGB").resize((512, 512))
         generated_image = super().generate(prompt, **kwargs)
         return generated_image
 

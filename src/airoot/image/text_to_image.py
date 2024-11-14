@@ -49,7 +49,7 @@ class ImageGen(BaseModel):
             "mask_image": None,
             "prompt_2": None,
             "negative_prompt": None,
-            "n_steps": 40,
+            "num_inference_steps": 40,
             "denoising_end": None,
             "strength": None,
             "guidance_scale": 7.0,
@@ -104,7 +104,7 @@ class SDXL(ImageGen):
         self.default_args = {
             "prompt_2": None,
             "negative_prompt": None,
-            "n_steps": 40,
+            "num_inference_steps": 40,
             "denoising_end": None,
             "guidance_scale": 7.0,
         }
@@ -135,7 +135,7 @@ class SDXLImg2Img(ImageGen):
         self.default_args = {
             "prompt_2": None,
             "negative_prompt": None,
-            "n_steps": 40,
+            "num_inference_steps": 40,
             "denoising_end": None,
             "strength": 0.75,
             "guidance_scale": 7.0,
@@ -163,7 +163,7 @@ class SDXLInpaint(ImageGen):
         self.default_args = {
             "prompt_2": None,
             "negative_prompt": None,
-            "n_steps": 40,
+            "num_inference_steps": 40,
             "denoising_end": None,
             "strength": 0.75,
             "guidance_scale": 7.0,
@@ -196,7 +196,7 @@ class SD(ImageGen):
         self.default_args = {
             "prompt_2": None,
             "negative_prompt": None,
-            "n_steps": 20,
+            "num_inference_steps": 20,
             "denoising_end": None,
             "guidance_scale": 7.0,
         }
@@ -225,7 +225,7 @@ class SDImg2Img(ImageGen):
         self.default_args = {
             "prompt_2": None,
             "negative_prompt": None,
-            "n_steps": 20,
+            "num_inference_steps": 20,
             "denoising_end": None,
             "strength": 0.75,
             "guidance_scale": 7.0,
@@ -258,7 +258,7 @@ class SDInpaint(ImageGen):
         self.default_args = {
             "prompt_2": None,
             "negative_prompt": None,
-            "n_steps": 20,
+            "num_inference_steps": 20,
             "denoising_end": None,
             "strength": 0.75,
             "guidance_scale": 7.0,
@@ -289,7 +289,7 @@ class Kadinsky(ImageGen):
         self.default_args = {
             "prompt_2": None,
             "negative_prompt": "low quality, bad quality",
-            "n_steps": 20,
+            "num_inference_steps": 20,
             "denoising_end": None,
             "prior_guidance_scale": 1.0,
             "height": 768,
@@ -320,7 +320,7 @@ class KadinskyImg2Img(ImageGen):
         self.default_args = {
             "prompt_2": None,
             "negative_prompt": "low quality, bad quality",
-            "n_steps": 20,
+            "num_inference_steps": 20,
             "denoising_end": None,
             "strength": 0.3,
             "prior_guidance_scale": 1.0,
@@ -361,7 +361,7 @@ class KadinskyInpaint(ImageGen):
         self.default_args = {
             "prompt_2": None,
             "negative_prompt": "low quality, bad quality",
-            "n_steps": 20,
+            "num_inference_steps": 20,
             "denoising_end": None,
             "strength": 0.3,
             "prior_guidance_scale": 1.0,

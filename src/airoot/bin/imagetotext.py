@@ -4,6 +4,7 @@ import argparse
 import io
 import logging
 import sys
+from pathlib import Path
 
 import torch
 from PIL import Image
@@ -56,13 +57,17 @@ def main():
         image_bytes = io.BytesIO(sys.stdin.buffer.read())
         image = Image.open(image_bytes).convert("RGB")
     else:
-        # Raise error if no audio input is provided
+        # Raise error if no image input is provided
         if not args.image_file_path:
             raise Exception(
                 "Error: No image input provided. Provide image_file_path as a positional argument (or pipe image bytes into the command)."
             )
-        image_bytes = open(args.image_file_path.strip(), "rb").read()
-        image = Image.open(args.image_file_path.strip()).convert("RGB")
+
+        image_file_path = (
+            Path(args.image_file_path.strip()).expanduser().resolve(strict=True)
+        )
+        image_bytes = open(image_file_path, "rb").read()
+        image = Image.open(image_file_path).convert("RGB")
 
     if not torch.cuda.is_available() and args.prompt is not None:  # VQA on cpu
         model = BlipVQA()

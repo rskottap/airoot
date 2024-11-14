@@ -4,6 +4,7 @@ import argparse
 import io
 import logging
 import sys
+from pathlib import Path
 
 import librosa
 import soundfile as sf
@@ -60,7 +61,10 @@ def main():
                 f"Recommended to use .wav audio files for input. Gave {args.audio_file_path}"
             )
 
-        audio, _ = librosa.load(args.audio_file_path.strip(), sr=target_sr)
+        audio_file_path = (
+            Path(args.audio_file_path.strip()).expanduser().resolve(strict=True)
+        )
+        audio, _ = librosa.load(audio_file_path, sr=target_sr)
 
     model = AudioToText()
     text = model.generate(audio, task=args.task) + "\n"

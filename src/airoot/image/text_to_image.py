@@ -33,7 +33,7 @@ from airoot.base_model import BaseModel, get_default_model, set_default_model
 logger = logging.getLogger("airoot.TextToImage")
 types = ["text2image", "img2img", "inpainting"]
 ignore_for_types = {
-    "text2image": ["init_image", "mask_image", "strength"],
+    "text2image": ["image", "mask_image", "strength"],
     "img2img": ["mask_image"],
     "inpainting": [],
 }
@@ -42,10 +42,10 @@ ignore_for_types = {
 class ImageGen(BaseModel):
     def __init__(self):
         super().__init__()
-        # init_image, mask_image and strength are the only arguments that vary in
+        # image, mask_image (and some others) vary in
         # whether or not they're passed into the different pipes
         self.default_args = {
-            "init_image": None,
+            "image": None,
             "mask_image": None,
             "prompt_2": None,
             "negative_prompt": None,
@@ -67,15 +67,19 @@ class ImageGen(BaseModel):
         ), "Given empty prompt. Prompt needs to be passed and should be non-empty"
         if self.type == "img2img":
             assert (
-                kwargs["init_image"] is not None
+                kwargs["image"] is not None
             ), "Please pass an initial PIL image for Img2Img generation"
         if self.type == "inpainting":
-            assert (kwargs["init_image"] is not None) and (
+            assert (kwargs["image"] is not None) and (
                 kwargs["mask_image"] is not None
             ), "Inpaiting needs both original image and mask images in PIL.Image format"
 
         args = dict()
         args["prompt"] = prompt
+        if "image" not in ignore_for_types[self.type]:
+            args["image"] = kwargs["image"]
+        if "mask_image" not in ignore_for_types[self.type]:
+            args["mask_image"] = kwargs["mask_image"]
 
         for k, v in self.default_args.items():
             if k in ignore_for_types[self.type]:
@@ -84,7 +88,7 @@ class ImageGen(BaseModel):
                 if k in kwargs:
                     args[k] = kwargs[k]
                 else:
-                    args[k] = self.default_args
+                    args[k] = self.default_args[k]
 
         generated_image = self.pipe(**args).images[0]
         return generated_image
@@ -287,13 +291,11 @@ class Kadinsky(ImageGen):
         self.name = name
         self.type = types[0]
         self.default_args = {
-            "prompt_2": None,
             "negative_prompt": "low quality, bad quality",
             "num_inference_steps": 20,
-            "denoising_end": None,
-            "prior_guidance_scale": 1.0,
-            "height": 768,
-            "width": 768,
+            "guidance_scale": 4.0,
+            "height": 512,
+            "width": 512,
         }
         self.load_model()
 
@@ -318,14 +320,12 @@ class KadinskyImg2Img(ImageGen):
         self.name = name
         self.type = types[1]
         self.default_args = {
-            "prompt_2": None,
             "negative_prompt": "low quality, bad quality",
             "num_inference_steps": 20,
-            "denoising_end": None,
+            "guidance_scale": 4.0,
             "strength": 0.3,
-            "prior_guidance_scale": 1.0,
-            "height": 768,
-            "width": 768,
+            "height": 512,
+            "width": 512,
         }
         self.load_model()
 
@@ -341,7 +341,7 @@ class KadinskyImg2Img(ImageGen):
     def generate(self, prompt, **kwargs):
         h = kwargs.get("height", self.default_args["height"])
         w = kwargs.get("width", self.default_args["width"])
-        kwargs["init_image"] = kwargs["init_image"].convert("RGB").thumbnail((h, w))
+        kwargs["image"] = kwargs["image"].convert("RGB").thumbnail((h, w))
 
         generated_image = super().generate(prompt, **kwargs)
         return generated_image
@@ -359,14 +359,11 @@ class KadinskyInpaint(ImageGen):
         self.name = name
         self.type = types[2]
         self.default_args = {
-            "prompt_2": None,
             "negative_prompt": "low quality, bad quality",
             "num_inference_steps": 20,
-            "denoising_end": None,
-            "strength": 0.3,
-            "prior_guidance_scale": 1.0,
-            "height": 768,
-            "width": 768,
+            "guidance_scale": 4.0,
+            "height": 512,
+            "width": 512,
         }
         self.load_model()
 
@@ -382,7 +379,7 @@ class KadinskyInpaint(ImageGen):
     def generate(self, prompt, **kwargs):
         h = kwargs.get("height", self.default_args["height"])
         w = kwargs.get("width", self.default_args["width"])
-        kwargs["init_image"] = kwargs["init_image"].convert("RGB").thumbnail((h, w))
+        kwargs["image"] = kwargs["image"].convert("RGB").thumbnail((h, w))
         kwargs["mask_image"] = kwargs["mask_image"].convert("RGB").thumbnail((h, w))
 
         generated_image = super().generate(prompt, **kwargs)

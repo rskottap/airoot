@@ -31,6 +31,7 @@ from diffusers import (
 from airoot.base_model import BaseModel, get_default_model, set_default_model
 
 logger = logging.getLogger("airoot.TextToImage")
+types = ["text2image", "img2img", "inpainting"]
 ignore_for_types = {
     "text2image": ["init_image", "mask_image", "strength"],
     "img2img": ["mask_image"],
@@ -67,11 +68,11 @@ class ImageGen(BaseModel):
         if self.type == "img2img":
             assert (
                 kwargs["init_image"] is not None
-            ), "Please pass an initial image for Img2Img generation"
+            ), "Please pass an initial PIL image for Img2Img generation"
         if self.type == "inpainting":
             assert (kwargs["init_image"] is not None) and (
                 kwargs["mask_image"] is not None
-            ), "Inpaiting needs both original image and mask image"
+            ), "Inpaiting needs both original image and mask images in PIL.Image format"
 
         args = dict()
         args["prompt"] = prompt
@@ -89,7 +90,7 @@ class ImageGen(BaseModel):
         return generated_image
 
 
-class SDXL(BaseModel):
+class SDXL(ImageGen):
     # for text to image on gpu
     # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_xl#diffusers.StableDiffusionXLPipeline
     # Model card: https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
@@ -99,6 +100,14 @@ class SDXL(BaseModel):
     def __init__(self, name="stabilityai/stable-diffusion-xl-base-1.0"):
         super().__init__()
         self.name = name
+        self.type = types[0]
+        self.default_args = {
+            "prompt_2": None,
+            "negative_prompt": None,
+            "n_steps": 40,
+            "denoising_end": None,
+            "guidance_scale": 7.0,
+        }
         self.load_model()
 
     def load_model(self):
@@ -111,30 +120,8 @@ class SDXL(BaseModel):
         )  # .to("cuda")
         self.pipe.enable_model_cpu_offload()
 
-    def generate(
-        self,
-        prompt,
-        init_image=None,
-        mask_image=None,
-        prompt_2=None,
-        negative_prompt=None,
-        n_steps=40,
-        denoising_end=None,
-        strength=None,
-        guidance_scale=7.0,
-    ):
-        generated_image = self.pipe(
-            prompt=prompt,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_end=denoising_end,
-            guidance_scale=guidance_scale,
-        ).images[0]
-        return generated_image
 
-
-class SDXLImg2Img(BaseModel):
+class SDXLImg2Img(ImageGen):
     # for text+image to image on gpu
     # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_xl#diffusers.StableDiffusionXLPipeline
     # Model card: https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0
@@ -144,6 +131,15 @@ class SDXLImg2Img(BaseModel):
     def __init__(self, name="stabilityai/stable-diffusion-xl-refiner-1.0"):
         super().__init__()
         self.name = name
+        self.type = types[1]
+        self.default_args = {
+            "prompt_2": None,
+            "negative_prompt": None,
+            "n_steps": 40,
+            "denoising_end": None,
+            "strength": 0.75,
+            "guidance_scale": 7.0,
+        }
         self.load_model()
 
     def load_model(self):
@@ -154,33 +150,8 @@ class SDXLImg2Img(BaseModel):
         )
         self.pipe.enable_model_cpu_offload()
 
-    def generate(
-        self,
-        prompt,
-        init_image,
-        mask_image=None,
-        prompt_2=None,
-        negative_prompt=None,
-        n_steps=40,
-        denoising_end=None,
-        strength=0.75,
-        guidance_scale=7.0,
-    ):
-        # returns Tensor object
-        generated_image = self.pipe(
-            prompt=prompt,
-            image=init_image,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_end=denoising_end,
-            strength=strength,
-            guidance_scale=guidance_scale,
-        ).images[0]
-        return generated_image
 
-
-class SDXLInpaint(BaseModel):
+class SDXLInpaint(ImageGen):
     # for inpainting on gpu
     # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/stable_diffusion_xl#diffusers.StableDiffusionXLPipeline
 
@@ -188,6 +159,16 @@ class SDXLInpaint(BaseModel):
     def __init__(self, name="stabilityai/stable-diffusion-xl-base-1.0"):
         super().__init__()
         self.name = name
+        self.type = types[2]
+        self.default_args = {
+            "prompt_2": None,
+            "negative_prompt": None,
+            "n_steps": 40,
+            "denoising_end": None,
+            "strength": 0.75,
+            "guidance_scale": 7.0,
+        }
+
         self.load_model()
 
     def load_model(self):
@@ -200,34 +181,8 @@ class SDXLInpaint(BaseModel):
         )
         self.pipe.enable_model_cpu_offload()
 
-    def generate(
-        self,
-        prompt,
-        init_image,
-        mask_image,
-        prompt_2=None,
-        negative_prompt=None,
-        n_steps=40,
-        denoising_end=None,
-        strength=0.75,
-        guidance_scale=7.0,
-    ):
-        # returns Tensor object
-        generated_image = self.pipe(
-            prompt=prompt,
-            image=init_image,
-            mask_image=mask_image,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_end=denoising_end,
-            strength=strength,
-            guidance_scale=guidance_scale,
-        ).images[0]
-        return generated_image
 
-
-class SD(BaseModel):
+class SD(ImageGen):
     # for text to image on cpu
     # Model card: https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5
     # See Limitations section
@@ -237,6 +192,14 @@ class SD(BaseModel):
     def __init__(self, name="sd-legacy/stable-diffusion-v1-5"):
         super().__init__()
         self.name = name
+        self.type = types[0]
+        self.default_args = {
+            "prompt_2": None,
+            "negative_prompt": None,
+            "n_steps": 20,
+            "denoising_end": None,
+            "guidance_scale": 7.0,
+        }
         self.load_model()
 
     def load_model(self):
@@ -249,31 +212,8 @@ class SD(BaseModel):
         if self.device == "cuda":
             self.pipe.enable_model_cpu_offload()
 
-    def generate(
-        self,
-        prompt,
-        init_image=None,
-        mask_image=None,
-        prompt_2=None,
-        negative_prompt=None,
-        n_steps=20,
-        denoising_end=None,
-        strength=None,
-        guidance_scale=7.0,
-    ):
-        # returns Tensor object
-        generated_image = self.pipe(
-            prompt=prompt,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_end=denoising_end,
-            guidance_scale=guidance_scale,
-        ).images[0]
-        return generated_image
 
-
-class SDImg2Img(BaseModel):
+class SDImg2Img(ImageGen):
     # for text+image to image on cpu
     # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/stable_diffusion/img2img#diffusers.StableDiffusionImg2ImgPipeline
 
@@ -281,6 +221,15 @@ class SDImg2Img(BaseModel):
     def __init__(self, name="sd-legacy/stable-diffusion-v1-5"):
         super().__init__()
         self.name = name
+        self.type = types[1]
+        self.default_args = {
+            "prompt_2": None,
+            "negative_prompt": None,
+            "n_steps": 20,
+            "denoising_end": None,
+            "strength": 0.75,
+            "guidance_scale": 7.0,
+        }
         self.load_model()
 
     def load_model(self):
@@ -292,34 +241,8 @@ class SDImg2Img(BaseModel):
         if self.device == "cuda":
             self.pipe.enable_model_cpu_offload()
 
-    def generate(
-        self,
-        prompt,
-        init_image,
-        mask_image=None,
-        prompt_2=None,
-        negative_prompt=None,
-        n_steps=20,
-        denoising_end=None,
-        strength=0.75,
-        guidance_scale=7.5,
-    ):
-        init_image = init_image.convert("RGB").resize((768, 512))
-        # returns Tensor object
-        generated_image = self.pipe(
-            prompt=prompt,
-            image=init_image,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_end=denoising_end,
-            strength=strength,
-            guidance_scale=guidance_scale,
-        ).images[0]
-        return generated_image
 
-
-class SDInpaint(BaseModel):
+class SDInpaint(ImageGen):
     # for inpainting on cpu
     # Model card: https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting
 
@@ -331,6 +254,15 @@ class SDInpaint(BaseModel):
     def __init__(self, name="sd-legacy/stable-diffusion-inpainting"):
         super().__init__()
         self.name = name
+        self.type = types[2]
+        self.default_args = {
+            "prompt_2": None,
+            "negative_prompt": None,
+            "n_steps": 20,
+            "denoising_end": None,
+            "strength": 0.75,
+            "guidance_scale": 7.0,
+        }
         self.load_model()
 
     def load_model(self):
@@ -343,34 +275,8 @@ class SDInpaint(BaseModel):
         if self.device == "cuda":
             self.pipe.enable_model_cpu_offload()
 
-    def generate(
-        self,
-        prompt,
-        init_image,
-        mask_image,
-        prompt_2=None,
-        negative_prompt=None,
-        n_steps=20,
-        denoising_end=None,
-        strength=0.75,
-        guidance_scale=7.0,
-    ):
-        # returns Tensor object
-        generated_image = self.pipe(
-            prompt=prompt,
-            image=init_image,
-            mask_image=mask_image,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_end=denoising_end,
-            strength=strength,
-            guidance_scale=guidance_scale,
-        ).images[0]
-        return generated_image
 
-
-class Kadinsky(BaseModel):
+class Kadinsky(ImageGen):
     # for text to image on cpu
     # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/kandinsky#diffusers.KandinskyCombinedPipeline
     # Model card: https://huggingface.co/kandinsky-community/kandinsky-2-1
@@ -379,6 +285,16 @@ class Kadinsky(BaseModel):
     def __init__(self, name="kandinsky-community/kandinsky-2-1"):
         super().__init__()
         self.name = name
+        self.type = types[0]
+        self.default_args = {
+            "prompt_2": None,
+            "negative_prompt": "low quality, bad quality",
+            "n_steps": 20,
+            "denoising_end": None,
+            "prior_guidance_scale": 1.0,
+            "height": 768,
+            "width": 768,
+        }
         self.load_model()
 
     def load_model(self):
@@ -390,35 +306,8 @@ class Kadinsky(BaseModel):
         if self.device == "cuda":
             self.pipe.enable_model_cpu_offload()
 
-    def generate(
-        self,
-        prompt,
-        init_image=None,
-        mask_image=None,
-        prompt_2=None,
-        negative_prompt="low quality, bad quality",
-        n_steps=40,
-        denoising_end=None,
-        strength=None,
-        guidance_scale=1.0,
-        height=768,
-        width=768,
-    ):
-        # returns Tensor object
-        generated_image = self.pipe(
-            prompt=prompt,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_end=denoising_end,
-            prior_guidance_scale=guidance_scale,
-            height=height,
-            width=width,
-        ).images[0]
-        return generated_image
 
-
-class KadinskyImg2Img(BaseModel):
+class KadinskyImg2Img(ImageGen):
     # for text+image to image on cpu
     # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/kandinsky#diffusers.KandinskyCombinedPipeline
     # Model card: https://huggingface.co/kandinsky-community/kandinsky-2-1
@@ -427,6 +316,17 @@ class KadinskyImg2Img(BaseModel):
     def __init__(self, name="kandinsky-community/kandinsky-2-1"):
         super().__init__()
         self.name = name
+        self.type = types[1]
+        self.default_args = {
+            "prompt_2": None,
+            "negative_prompt": "low quality, bad quality",
+            "n_steps": 20,
+            "denoising_end": None,
+            "strength": 0.3,
+            "prior_guidance_scale": 1.0,
+            "height": 768,
+            "width": 768,
+        }
         self.load_model()
 
     def load_model(self):
@@ -438,40 +338,16 @@ class KadinskyImg2Img(BaseModel):
         if self.device == "cuda":
             self.pipe.enable_model_cpu_offload()
 
-    def generate(
-        self,
-        prompt,
-        init_image,
-        mask_image=None,
-        prompt_2=None,
-        negative_prompt="low quality, bad quality",
-        n_steps=40,
-        denoising_end=None,
-        strength=0.3,
-        guidance_scale=1.0,
-        height=768,
-        width=768,
-    ):
-        init_image = init_image.convert("RGB")
-        init_image.thumbnail((height, width))
+    def generate(self, prompt, **kwargs):
+        h = kwargs.get("height", self.default_args["height"])
+        w = kwargs.get("width", self.default_args["width"])
+        kwargs["init_image"] = kwargs["init_image"].convert("RGB").thumbnail((h, w))
 
-        # returns Tensor object
-        generated_image = self.pipe(
-            prompt=prompt,
-            image=init_image,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_end=denoising_end,
-            strength=strength,
-            prior_guidance_scale=guidance_scale,
-            height=height,
-            width=width,
-        ).images[0]
+        generated_image = super().generate(prompt, **kwargs)
         return generated_image
 
 
-class KadinskyInpaint(BaseModel):
+class KadinskyInpaint(ImageGen):
     # for image inpainting on cpu
     # HF pipeline docs: https://huggingface.co/docs/diffusers/api/pipelines/kandinsky#diffusers.KandinskyCombinedPipeline
     # Model card: https://huggingface.co/kandinsky-community/kandinsky-2-1
@@ -481,6 +357,17 @@ class KadinskyInpaint(BaseModel):
     def __init__(self, name="kandinsky-community/kandinsky-2-1-inpaint"):
         super().__init__()
         self.name = name
+        self.type = types[2]
+        self.default_args = {
+            "prompt_2": None,
+            "negative_prompt": "low quality, bad quality",
+            "n_steps": 20,
+            "denoising_end": None,
+            "strength": 0.3,
+            "prior_guidance_scale": 1.0,
+            "height": 768,
+            "width": 768,
+        }
         self.load_model()
 
     def load_model(self):
@@ -492,39 +379,13 @@ class KadinskyInpaint(BaseModel):
         if self.device == "cuda":
             self.pipe.enable_model_cpu_offload()
 
-    def generate(
-        self,
-        prompt,
-        init_image,
-        mask_image,
-        prompt_2=None,
-        negative_prompt="low quality, bad quality",
-        n_steps=40,
-        denoising_end=None,
-        strength=0.3,
-        guidance_scale=1.0,
-        height=768,
-        width=768,
-    ):
-        init_image = init_image.convert("RGB")
-        init_image.thumbnail((height, width))
-        mask_image = mask_image.convert("RGB")
-        mask_image.thumbnail((height, width))
+    def generate(self, prompt, **kwargs):
+        h = kwargs.get("height", self.default_args["height"])
+        w = kwargs.get("width", self.default_args["width"])
+        kwargs["init_image"] = kwargs["init_image"].convert("RGB").thumbnail((h, w))
+        kwargs["mask_image"] = kwargs["mask_image"].convert("RGB").thumbnail((h, w))
 
-        # returns Tensor object
-        generated_image = self.pipe(
-            prompt=prompt,
-            image=init_image,
-            mask_image=mask_image,
-            prompt_2=prompt_2,
-            negative_prompt=negative_prompt,
-            num_inference_steps=n_steps,
-            denoising_end=denoising_end,
-            strength=strength,
-            prior_guidance_scale=guidance_scale,
-            height=height,
-            width=width,
-        ).images[0]
+        generated_image = super().generate(prompt, **kwargs)
         return generated_image
 
 

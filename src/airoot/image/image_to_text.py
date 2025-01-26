@@ -179,12 +179,16 @@ class Llava(BaseModel):
                 torch_dtype=self.torch_dtype,
                 low_cpu_mem_usage=True,
                 device_map="auto",
+                load_in_4bit=True,
+                attn_implementation="flash_attention_2",
             )
         else:
             self.model = LlavaForConditionalGeneration.from_pretrained(
                 self.name,
                 torch_dtype=self.torch_dtype,
                 low_cpu_mem_usage=True,
+                load_in_4bit=True,
+                attn_implementation="flash_attention_2",
             ).to(self.device)
 
         self.processor.patch_size = self.model.config.vision_config.patch_size
@@ -229,11 +233,7 @@ class LlavaNext(BaseModel):
         self.name = name
         self.default_prompt = textwrap.dedent(
             """
-        Describe this image in detail.\nInclude any specific details on 
-        background colors, patterns, themes, settings/context (for example if it's a search page 
-        result, texting platform screenshot, pic of scenery etc.,), what might be going on in 
-        the picture (activities, conversations), what all and how many objects, what all animals or people etc., 
-        are present if any, and so on."""
+        Describe this image in detail.\n"""
         )
         self.load_model()
 
@@ -243,7 +243,14 @@ class LlavaNext(BaseModel):
             self.name,
             torch_dtype=self.torch_dtype,
             low_cpu_mem_usage=True,
+            load_in_4bit=True,
+            attn_implementation="flash_attention_2",
         ).to(self.device)
+
+        self.processor.patch_size = self.model.config.vision_config.patch_size
+        self.processor.vision_feature_select_strategy = (
+            self.model.config.vision_feature_select_strategy
+        )
 
     def generate(self, image_data, text=None, max_length=1024):
         if text is None:
@@ -263,10 +270,9 @@ class LlavaNext(BaseModel):
         )
         inputs = self.processor(image, prompt, return_tensors="pt").to(self.device)
         output = self.model.generate(**inputs, max_new_tokens=max_length)
-        generated_text = self.processor.decode(
-            output[0], skip_special_tokens=True
-        ).strip()
-        return generated_text
+        generated_text = self.processor.decode(output[0], skip_special_tokens=True)
+        m = re.search(r"\[/INST\]", generated_text)
+        return generated_text[m.end() :].strip()
 
 
 # workaround for unnecessary flash_attn requirement

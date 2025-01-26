@@ -1,8 +1,15 @@
-__all__ = ["BaseModel", "set_default_model", "get_default_model", "get_models"]
+__all__ = [
+    "BaseModel",
+    "set_default_model",
+    "get_default_model",
+    "get_model_config",
+    "try_load_models",
+]
 
 import json
 import logging
 import os
+import subprocess
 from pathlib import Path
 
 import colorlog
@@ -52,7 +59,7 @@ def set_default_model(model_keys: list[str | int], module: str, model: dict, *ar
     with open(os.path.join(p, "model.keys"), "w") as f:
         f.write(",".join(model_keys))
     logger.info(
-        f"Set model {model} with keys {model_keys} as the default model for {module} module in {str(p)}"
+        f"Set model {model} with keys {model_keys} as the default model for {os.path.join(module, *args)} module in {str(p)}"
     )
 
 
@@ -74,7 +81,7 @@ def get_default_model(module: str, *args) -> dict | None:
         model_keys = [eval_if_int(k) for k in model_keys]  # eval any ints for indexing
 
         # index into config till you get to the model dict {model: <class>, name: "name"}
-        config = get_models(module)
+        config = get_model_config(module)
         model = config
         for key in model_keys:
             model = model[key]
@@ -84,7 +91,7 @@ def get_default_model(module: str, *args) -> dict | None:
     return None
 
 
-def get_models(module: str) -> dict:
+def get_model_config(module: str) -> dict:
     if module == "TextToAudio":
         from airoot.audio.text_to_audio import config
 
@@ -101,3 +108,80 @@ def get_models(module: str) -> dict:
         from airoot.image.text_to_image import config
 
         return config
+
+
+def try_load_models(module, *extra_keys) -> dict:
+    """
+        extra_keys: Any additional keys (like speech/music) *in order* besides "cpu" and "cuda" to be able to index into the modules 'config' dict to get the end list of default models List(Dict()): [{"model": <class>, "name": <str: HF model path>}, {},...]
+
+    Tries to load the model into memory, in order of devices.
+
+    Does this by trying to load the model into memory in a separate process. So if it fails mid-way, with some model layers loaded into memory but not all, and raises an exception, the GPU memory gets cleared up automatically when the process exits. Otherwise, we won't have access to the model class/variable to be able to delete it later and clear up memory. Hence, trying it in a different process.
+
+    If successful, writes that model to etc.cache_path as the default model to use on that machine for the module [audio, video, image, text].
+
+    If gpu is available then:
+        - uses gpu regardless of model.
+        - first try to load the cuda models in order (decreasing memory usage).
+        - If all the cuda models fail, then switch to cpu default models but fit them to gpu.
+
+    If no gpu is available then try to load the cpu models in order.
+    """
+    extra_keys = [str(k) for k in extra_keys]
+
+    model = get_default_model(module, *extra_keys)
+    if model:
+        return model
+    logger.info(
+        f"No default model found (in ~/.cache/airoot) for {os.path.join(module, *extra_keys)} on this device. Trying to determine default model for this device."
+    )
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    config = get_model_config(module)
+
+    # order in which to try out the models
+    # first try to load cuda models
+    if device == "cuda":
+        defaults = config["cuda"]
+    else:
+        # either device is cpu or cuda models failed to load
+        defaults = config["cpu"]
+
+    for key in extra_keys:
+        defaults = defaults[key]
+
+    import airoot
+
+    test_path = os.path.join(airoot.__path__[-1], "test_load_model.py")
+    base_command = [
+        "python3",
+        test_path,
+        "-m",
+        module,
+    ]
+
+    for i in range(len(defaults)):
+        model = defaults[i]
+        try:
+            # parameters to test_load_model script
+            params = ["--keys", device, *extra_keys, "--idx", i]
+            params = [str(x) for x in params]
+            command = base_command + params
+            _ = subprocess.run(
+                command,
+                capture_output=True,
+                check=True,
+            )
+            set_default_model([device, *extra_keys, i], module, model, *extra_keys)
+            return model
+        except Exception as e:
+            logger.error(
+                f"Unable to load model {model['name']} on {device.upper()} due to error:\n{e.stderr}\nClearing HF cache and Trying next model.",
+                exc_info=True,
+            )
+            # TODO: Clear HF Cache for failed to load model but was downloaded successfully
+            continue
+
+    raise Exception(
+        f"Unable to load any of the default models for {os.path.join(module, *extra_keys)} module. All available models:\n{json.dumps(config, default=lambda o: str(o), indent=2)}"
+    )

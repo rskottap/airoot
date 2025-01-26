@@ -53,11 +53,11 @@ In Python
 
 ```python
 from PIL import Image
-from airoot.base_model import get_models
+from airoot.base_model import get_model_config
 from airoot.image import ImageToText, Llava, EasyOCR, Florence
 
 # See all available default models for cpu/gpu
-available_models = get_models("ImageToText")
+available_models = get_model_config("ImageToText")
 
 # Tries to load best model based on cpu/gpu availability
 model = ImageToText()

@@ -6,7 +6,7 @@ The internals of model init handle which device to fit to.
 import argparse
 
 import airoot
-from airoot.base_model import get_models
+from airoot.base_model import get_model_config
 
 
 def main():
@@ -34,7 +34,7 @@ def main():
     )
     args = parser.parse_args()
 
-    model_config = get_models(args.module)
+    model_config = get_model_config(args.module)
     model = model_config
     for key in args.keys:
         model = model[key]

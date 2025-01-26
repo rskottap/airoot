@@ -61,12 +61,12 @@ Do `audiogen --help` for full CLI usage.
 
 ### Via Library
 ```python
-from airoot.base_model import get_models
+from airoot.base_model import get_model_config
 from airoot.audio import TextToAudio, Bark, StableAudio1
 import soundfile as sf
 
 # Default models to use for the TextToAudio module based on CPU/GPU if they can be loaded successfully.
-default_models = get_models("TextToAudio")
+default_models = get_model_config("TextToAudio")
 
 # Loads default speech model class based on machine
 model = TextToAudio('speech') # or 'music' for music models
@@ -169,7 +169,7 @@ Only tested on Ubuntu for python >=3.9, <3.12.
 
 ## Notes 📝
 
-- Do `get_models("TextToAudio")` in python to see the config for default models to use for speech and music based on CPU vs GPU availablity. 
+- Do `get_model_config("TextToAudio")` in python to see the config for default models to use for speech and music based on CPU vs GPU availablity. 
 
 - The **first time** the audiogen command is run (for speech or music), the script `test_load_model.py` is run with the different models available (in order), and sets the **first model that can be successfully loaded into memory** as the **default model** for that machine. Writes the default model to `~/.cache/airoot/<module>/...`. 
     - This can take long the first time, so please allow it some time.

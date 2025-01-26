@@ -57,7 +57,7 @@ For converting audio to text, i.e., transcription and translation, see `audiotot
 ---
 ### Notes 📝
 
-- Do `get_models(<Module>)` (AudioToText, ImageToText etc.,)(see `src/airoot/etc/__init__.py` modules for full list) in python to see the config for default models to use for that module based on CPU vs GPU availablity. 
+- Do `get_model_config(<Module>)` (AudioToText, ImageToText etc.,)(see `src/airoot/etc/__init__.py` modules for full list) in python to see the config for default models to use for that module based on CPU vs GPU availablity.
 
 - The **first time** these commands are run, the script `test_load_model.py` is run with the different models available (in order), and sets the **first model that can be successfully loaded into memory** as the **default model** for that machine. Writes the default model to `~/.cache/airoot/<module>/...`. 
     - This can take long the first time, so please allow it some time.

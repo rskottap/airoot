@@ -61,11 +61,11 @@ In Python
 ```python
 import librosa
 
-from airoot.base_model import get_models
+from airoot.base_model import get_model_config
 from airoot.audio import AudioToText, Whisper2
 
 # See all available default models for cpu/gpu
-available_models = get_models("AudioToText")
+available_models = get_model_config("AudioToText")
 
 # Load the audio file (needs a sample rate of 16kHz for Whisper inference)
 target_sr = 16000

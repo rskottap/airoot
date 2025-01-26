@@ -29,6 +29,7 @@ pip install git+https://github.com/huggingface/parler-tts.git
 ```
 pip install timm
 pip install --no-build-isolation flash_attn
+pip install bitsandbytes
 ```
 
 Extra, Dev mode:
@@ -65,6 +66,8 @@ For converting audio to text, i.e., transcription and translation, see `audiotot
 
 ---
 ### Troubleshooting ❗
+
+If CUDA OOM error and reserved but unallocated memory by PyTorch is large try setting `export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` to avoid fragmentation.
 
 ❗If issues detecting/using GPU, **ensure PyTorch and CUDA versions are compatible**! Otherwise torch might fail to detect the gpu. Ensure cuda is installed and setup. (Can try running a simple cuda script compiled with nvcc to see if GPU and drivers are working properly)
 

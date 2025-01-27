@@ -2,7 +2,6 @@ __all__ = [
     "ImageToText",
     "BlipCaption",
     "BlipVQA",
-    "Blip2",
     "EasyOCR",
     "Llava",
     "LlavaNext",
@@ -18,8 +17,6 @@ import torch
 from transformers import (
     AutoModelForCausalLM,
     AutoProcessor,
-    Blip2ForConditionalGeneration,
-    Blip2Processor,
     BlipForConditionalGeneration,
     BlipForQuestionAnswering,
     LlavaForConditionalGeneration,
@@ -86,36 +83,6 @@ class BlipVQA(BaseModel):
             self.device, self.torch_dtype
         )
         out = self.model.generate(**inputs, max_new_tokens=max_length)
-        generated_text = self.processor.decode(out[0], skip_special_tokens=True).strip()
-        return generated_text
-
-
-class Blip2(BaseModel):
-    # link: https://huggingface.co/Salesforce/blip2-opt-2.7b
-    # https://huggingface.co/docs/transformers/en/model_doc/blip-2#transformers.Blip2ForConditionalGeneration
-    # name="Salesforce/blip2-opt-2.7b" # For BLIP2
-
-    def __init__(self, name="Salesforce/blip2-opt-2.7b"):
-        super().__init__()
-        self.name = name
-        self.template = "Question: {} Answer:"
-        self.default_prompt = "What is this image about? What is going on? What all objects/people/animals are there in this image, if any?"
-        self.load_model()
-
-    def load_model(self):
-        self.processor = Blip2Processor.from_pretrained(self.name)
-        self.model = Blip2ForConditionalGeneration.from_pretrained(
-            self.name, torch_dtype=self.torch_dtype
-        ).to(self.device)
-
-    def generate(self, image_data, text=None, max_length=1024):
-        if text is not None:
-            text = self.template.format(text)
-
-        inputs = self.processor(image_data, text=text, return_tensors="pt").to(
-            self.device, self.torch_dtype
-        )
-        out = self.model.generate(**inputs, max_length=max_length)
         generated_text = self.processor.decode(out[0], skip_special_tokens=True).strip()
         return generated_text
 
@@ -384,7 +351,6 @@ config = {
     "cuda": [
         {"model": LlavaNext, "name": "llava-hf/llava-v1.6-mistral-7b-hf"},
         {"model": Llava, "name": "llava-hf/llava-1.5-7b-hf"},
-        # {"model": Blip2, "name": "Salesforce/blip2-opt-2.7b"},
         {"model": Florence, "name": "microsoft/Florence-2-large-ft"},
     ],
 }

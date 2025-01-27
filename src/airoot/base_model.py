@@ -54,6 +54,7 @@ def set_default_model(model_keys: list[str | int], module: str, model: dict, *ar
     """
 
     args = [str(a) for a in args]
+    model_keys = [str(k) for k in model_keys]
     p = Path(os.path.join(etc.cache_path, module, *args)).expanduser()
     os.makedirs(p, exist_ok=True)
     with open(os.path.join(p, "model.keys"), "w") as f:
@@ -108,6 +109,33 @@ def get_model_config(module: str) -> dict:
         from airoot.image.text_to_image import config
 
         return config
+
+
+def del_model_hf_cache(hf_model_path: str):
+    """
+    hf_model_path: The path to the model in huggingface. Deletes the model from HF cache dir
+    """
+    import shutil
+
+    hf_cache_dir = os.environ.get("HF_HOME") or os.environ.get("HF_HUB_CACHE")
+    if hf_cache_dir is None:
+        import platform
+
+        HOME = "HOME"
+        if platform.system() == "Windows":
+            HOME = "USERPROFILE"
+        hf_cache_dir = os.path.join(os.environ[HOME], ".cache/huggingface/hub")
+    try:
+        hf_cache_dir = Path(hf_cache_dir).expanduser().resolve(strict=True)
+    except Exception as e:
+        logger.warning(
+            f"Unable to delete model {hf_model_path}. Skipping.\nResolved Huggingface cache directory to be {hf_cache_dir} but got Exception: {e}. Ensure the cache can be found via ~/.cache/huggingface/hub or set in HF_HOME or HF_HUB_CACHE."
+        )
+        return
+
+    hf_model_name = "--".join(["models"] + hf_model_path.split("/"))
+    shutil.rmtree(Path(hf_cache_dir, hf_model_name))
+    logger.info(f"Deleted model {hf_model_path} from {hf_cache_dir.as_posix()}.")
 
 
 def try_load_models(module, *extra_keys) -> dict:
@@ -176,10 +204,12 @@ def try_load_models(module, *extra_keys) -> dict:
             return model
         except Exception as e:
             logger.error(
-                f"Unable to load model {model['name']} on {device.upper()} due to error:\n{e.stderr}\nClearing HF cache and Trying next model.",
+                f"Unable to load model {model['name']} on {device.upper()} due to error:\n{e.stderr}\n",
                 exc_info=True,
             )
-            # TODO: Clear HF Cache for failed to load model but was downloaded successfully
+            # Clear HF Cache for failed to load model but was downloaded successfully or partially downloaded
+            del_model_hf_cache(model["name"])
+            logger.info("Trying next available model.")
             continue
 
     raise Exception(

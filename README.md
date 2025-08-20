@@ -24,6 +24,10 @@ Next, install ParlerTTS (text to speech model):
 ```
 pip install git+https://github.com/huggingface/parler-tts.git
 ```
+For Deepseek Multimodal model Janus:
+```
+pip install git+https://github.com/deepseek-ai/Janus
+```
 
 **If NVIDIA CUDA GPU available, then additionally do**
 ```
